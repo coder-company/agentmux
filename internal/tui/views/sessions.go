@@ -17,6 +17,7 @@ type SessionsView struct {
 	Width   int
 	Height  int
 	Status  string
+	Loaded  bool
 }
 
 // NewSessionsView creates the sessions view.
@@ -29,9 +30,10 @@ func NewSessionsView(client *tmux.Client) *SessionsView {
 
 // Refresh reloads sessions from tmux.
 func (v *SessionsView) Refresh() {
+	v.Loaded = true
 	sessions, err := v.Client.ListSessions()
 	if err != nil {
-		v.Status = "error: " + err.Error()
+		v.Status = "✗ " + err.Error()
 		return
 	}
 	v.List.Sessions = sessions
@@ -45,12 +47,16 @@ func (v *SessionsView) Refresh() {
 func (v *SessionsView) RefreshPreview() {
 	sel := v.List.Selected()
 	if sel == nil {
-		v.Preview = components.Preview{Title: "Preview", Content: ""}
+		v.Preview = components.Preview{Title: "Preview"}
 		return
 	}
 	content, err := v.Client.CapturePane(sel.Name, 30)
 	if err != nil {
-		content = "capture error: " + err.Error()
+		v.Preview = components.Preview{
+			Title: sel.Name,
+			Error: "Could not capture pane output",
+		}
+		return
 	}
 	v.Preview = components.Preview{
 		Title:   sel.Name,
@@ -60,19 +66,38 @@ func (v *SessionsView) RefreshPreview() {
 
 // Render returns the full sessions view.
 func (v *SessionsView) Render() string {
+	if v.Width == 0 || v.Height == 0 {
+		return "Loading..."
+	}
+
 	leftWidth := v.Width / 3
-	if leftWidth < 24 {
-		leftWidth = 24
+	if leftWidth < 28 {
+		leftWidth = 28
+	}
+	if leftWidth > v.Width-20 {
+		leftWidth = v.Width - 20
 	}
 	rightWidth := v.Width - leftWidth - 4
+	if rightWidth < 10 {
+		rightWidth = 10
+	}
+
+	panelHeight := v.Height - 4
+	if panelHeight < 3 {
+		panelHeight = 3
+	}
 
 	// Left panel: session list
-	listContent := styles.Title.Render("Sessions") + "\n" + v.List.Render(leftWidth-2)
-	left := styles.ActivePanel.Width(leftWidth).Height(v.Height - 4).Render(listContent)
+	listTitle := styles.Title.Render("Sessions")
+	if !v.Loaded {
+		listTitle += " " + styles.Muted.Render("(loading…)")
+	}
+	listContent := listTitle + "\n" + v.List.Render(leftWidth-2)
+	left := styles.ActivePanel.Width(leftWidth).Height(panelHeight).Render(listContent)
 
 	// Right panel: preview
-	previewContent := v.Preview.Render(rightWidth-2, v.Height-4)
-	right := styles.Panel.Width(rightWidth).Height(v.Height - 4).Render(previewContent)
+	previewContent := v.Preview.Render(rightWidth-2, panelHeight)
+	right := styles.Panel.Width(rightWidth).Height(panelHeight).Render(previewContent)
 
 	main := lipgloss.JoinHorizontal(lipgloss.Top, left, right)
 

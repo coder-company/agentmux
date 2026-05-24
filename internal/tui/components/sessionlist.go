@@ -18,6 +18,9 @@ func (sl *SessionList) Selected() *core.Session {
 	if len(sl.Sessions) == 0 {
 		return nil
 	}
+	if sl.Cursor >= len(sl.Sessions) {
+		sl.Cursor = len(sl.Sessions) - 1
+	}
 	return &sl.Sessions[sl.Cursor]
 }
 
@@ -38,7 +41,7 @@ func (sl *SessionList) MoveDown() {
 // Render returns the string representation.
 func (sl *SessionList) Render(width int) string {
 	if len(sl.Sessions) == 0 {
-		return styles.Muted.Render("  No sessions")
+		return styles.Muted.Render("  No tmux sessions.\n\n  Press n to create one,\n  or p to launch a workspace.")
 	}
 
 	var out string

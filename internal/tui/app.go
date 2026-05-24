@@ -20,21 +20,22 @@ const (
 
 // Model is the top-level Bubble Tea model.
 type Model struct {
-	keys       KeyMap
-	view       View
-	sessions   *views.SessionsView
-	palette    *views.PaletteView
-	launcher   *views.LauncherView
-	client     *tmux.Client
-	store      *store.Store
-	width      int
-	height     int
-	quitting   bool
-	attachName string
+	keys         KeyMap
+	view         View
+	sessions     *views.SessionsView
+	palette      *views.PaletteView
+	launcher     *views.LauncherView
+	client       *tmux.Client
+	store        *store.Store
+	width        int
+	height       int
+	quitting     bool
+	attachName   string
+	confirmKill  bool
+	confirmName  string
+	renaming     bool
+	renameBuffer string
 }
-
-// AttachMsg signals the app should quit and attach to a session.
-type AttachMsg struct{ Name string }
 
 // RefreshMsg triggers a session list refresh.
 type RefreshMsg struct{}
@@ -87,6 +88,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Kill confirmation mode
+	if m.confirmKill {
+		return m.handleConfirmKey(msg)
+	}
+
+	// Rename mode
+	if m.renaming {
+		return m.handleRenameKey(msg)
+	}
+
 	// Palette mode
 	if m.view == ViewPalette {
 		return m.handlePaletteKey(msg)
@@ -121,26 +132,26 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 	case "n":
-		// Create session with auto-generated name
 		name := generateSessionName(m.sessions.List.Sessions)
 		if err := m.client.NewSession(name, ""); err == nil {
-			m.sessions.Status = "created: " + name
+			m.sessions.Status = "✓ Created: " + name
 			m.sessions.Refresh()
 		} else {
-			m.sessions.Status = "error: " + err.Error()
+			m.sessions.Status = "✗ " + err.Error()
 		}
 
 	case "k":
 		if sel := m.sessions.List.Selected(); sel != nil {
-			if err := m.client.KillSession(sel.Name); err == nil {
-				m.sessions.Status = "killed: " + sel.Name
-				if m.store != nil {
-					m.store.RemoveSession(sel.Name)
-				}
-				m.sessions.Refresh()
-			} else {
-				m.sessions.Status = "error: " + err.Error()
-			}
+			m.confirmKill = true
+			m.confirmName = sel.Name
+			m.sessions.Status = "Kill session \"" + sel.Name + "\"? [y/N]"
+		}
+
+	case "r":
+		if sel := m.sessions.List.Selected(); sel != nil {
+			m.renaming = true
+			m.renameBuffer = sel.Name
+			m.sessions.Status = "Rename to: " + m.renameBuffer + "█"
 		}
 
 	case "/":
@@ -154,9 +165,66 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m Model) handleConfirmKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "y", "Y":
+		if err := m.client.KillSession(m.confirmName); err == nil {
+			m.sessions.Status = "✓ Killed: " + m.confirmName
+			if m.store != nil {
+				m.store.RemoveSession(m.confirmName)
+			}
+			m.sessions.Refresh()
+		} else {
+			m.sessions.Status = "✗ " + err.Error()
+		}
+		m.confirmKill = false
+		m.confirmName = ""
+	default:
+		m.confirmKill = false
+		m.confirmName = ""
+		m.sessions.Status = ""
+	}
+	return m, nil
+}
+
+func (m Model) handleRenameKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "enter":
+		sel := m.sessions.List.Selected()
+		if sel != nil && m.renameBuffer != "" && m.renameBuffer != sel.Name {
+			if err := tmux.ValidateSessionName(m.renameBuffer); err != nil {
+				m.sessions.Status = "✗ " + err.Error()
+			} else if err := m.client.RenameSession(sel.Name, m.renameBuffer); err != nil {
+				m.sessions.Status = "✗ " + err.Error()
+			} else {
+				m.sessions.Status = "✓ Renamed: " + sel.Name + " → " + m.renameBuffer
+				m.sessions.Refresh()
+			}
+		}
+		m.renaming = false
+		m.renameBuffer = ""
+	case "esc":
+		m.renaming = false
+		m.renameBuffer = ""
+		m.sessions.Status = ""
+	case "backspace":
+		if len(m.renameBuffer) > 0 {
+			m.renameBuffer = m.renameBuffer[:len(m.renameBuffer)-1]
+		}
+		m.sessions.Status = "Rename to: " + m.renameBuffer + "█"
+	default:
+		ch := msg.String()
+		if len(ch) == 1 {
+			m.renameBuffer += ch
+			m.sessions.Status = "Rename to: " + m.renameBuffer + "█"
+		}
+	}
+	return m, nil
+}
+
 func (m Model) handlePaletteKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "esc":
+	case "esc", "ctrl+c":
 		m.view = ViewSessions
 	case "up", "ctrl+p":
 		m.palette.MoveUp()
@@ -192,11 +260,11 @@ func (m Model) handleLauncherKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		ws := m.launcher.SelectedWorkspace()
 		if ws != nil {
 			if err := m.client.NewSession(ws.Name, ws.Root); err == nil {
-				m.sessions.Status = "launched: " + ws.Name
+				m.sessions.Status = "✓ Launched: " + ws.Name
 				m.view = ViewSessions
 				m.sessions.Refresh()
 			} else {
-				m.sessions.Status = "error: " + err.Error()
+				m.sessions.Status = "✗ " + err.Error()
 			}
 		}
 	}
