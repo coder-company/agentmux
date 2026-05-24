@@ -1,18 +1,35 @@
 # agentmux
 
-A modern terminal workspace control plane over tmux. Keyboard-first TUI for managing sessions, previewing pane output, and launching workspaces.
+A modern terminal workspace control plane over tmux.
+
+Keyboard-first TUI for browsing sessions, previewing pane output, and launching workspaces — without leaving the terminal.
+
+```
+╭─ Sessions ──────────╮╭─ Preview ───────────────────────╮
+│ ● main (3 win)      ││ ~/code/agentmux                 │
+│   api (1 win)       ││ $ go test ./...                  │
+│   deploy (2 win)    ││ ok  agentmux/internal/config     │
+│                     ││ ok  agentmux/internal/store      │
+│                     ││ ok  agentmux/internal/adapters   │
+╰─────────────────────╯╰─────────────────────────────────╯
+ enter attach  n new  k kill  r rename  / search  p projects  q quit
+```
 
 ## Install
 
 ```bash
-go install agentmux/cmd/agentmux@latest
+# From source
+go install github.com/youruser/agentmux/cmd/agentmux@latest
+
+# Or build locally
+git clone https://github.com/youruser/agentmux && cd agentmux
+make install
 ```
 
-Or build from source:
+### Requirements
 
-```bash
-go build -o agentmux ./cmd/agentmux
-```
+- Go 1.21+
+- tmux 3.0+
 
 ## Usage
 
@@ -21,30 +38,32 @@ go build -o agentmux ./cmd/agentmux
 agentmux
 
 # CLI commands
-agentmux list          # List tmux sessions
-agentmux new <name>    # Create a new session
-agentmux attach <name> # Attach to a session
-agentmux kill <name>   # Kill a session
+agentmux list              # List sessions
+agentmux new myproject     # Create a session
+agentmux new api --dir ~/code/api  # Create with working directory
+agentmux attach myproject  # Attach (replaces process)
+agentmux kill myproject    # Kill a session
+agentmux init              # Generate default config
 ```
 
-## TUI Keybindings
+## Keybindings
 
-| Key     | Action            |
-|---------|-------------------|
-| `enter` | Attach to session |
-| `n`     | New session       |
-| `k`     | Kill session      |
-| `r`     | Rename session    |
-| `/`     | Command palette   |
-| `p`     | Project launcher  |
-| `↑/↓`   | Navigate          |
-| `tab`   | Switch context    |
-| `esc`   | Back              |
-| `q`     | Quit              |
+| Key       | Action              |
+|-----------|---------------------|
+| `enter`   | Attach to session   |
+| `n`       | New session         |
+| `k`       | Kill session (y/N)  |
+| `r`       | Rename session      |
+| `/`       | Command palette     |
+| `p`       | Workspace launcher  |
+| `↑`/`↓`  | Navigate            |
+| `tab`     | Switch context      |
+| `esc`     | Back                |
+| `q`       | Quit                |
 
 ## Configuration
 
-Config lives at `~/.config/agentmux/config.toml`:
+Config lives at `~/.config/agentmux/config.toml`. Run `agentmux init` to generate it.
 
 ```toml
 [[workspaces]]
@@ -65,27 +84,26 @@ cmd = "go test ./..."
 ```
 cmd/agentmux/         CLI entrypoint
 internal/
-  app/                Application initialization and wiring
+  app/                Application wiring
   adapters/tmux/      tmux CLI wrapper and output parser
   commands/           Cobra CLI commands
-  config/             TOML config loader
+  config/             TOML config loader with validation
   core/               Domain models (Session, Workspace)
-  store/              SQLite local state
+  store/              SQLite local state with schema versioning
   tui/                Bubble Tea app shell
     components/       Reusable UI components
     styles/           Lip Gloss theme
     views/            View modules (sessions, palette, launcher)
 ```
 
-## Requirements
-
-- Go 1.21+
-- tmux 3.0+
-
 ## Development
 
 ```bash
-go test ./...
-go vet ./...
-gofmt -l .
+make check     # fmt + vet + test
+make build     # build binary
+make smoke     # build + quick smoke test
 ```
+
+## License
+
+MIT
