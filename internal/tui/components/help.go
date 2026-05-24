@@ -50,29 +50,3 @@ func SessionsFooter(width int) string {
 		{"q", "quit"},
 	}, width)
 }
-
-// PaletteFooter for command palette.
-func PaletteFooter(width int) string {
-	return RenderFooter([]HelpBinding{
-		{"↑↓", "nav"},
-		{"enter", "select"},
-		{"esc", "close"},
-	}, width)
-}
-
-// LauncherFooter for workspace launcher.
-func LauncherFooter(width int) string {
-	return RenderFooter([]HelpBinding{
-		{"↑↓/jk", "nav"},
-		{"enter", "launch"},
-		{"tab", "commands"},
-		{"esc", "back"},
-	}, width)
-}
-
-// HelpFooter for help overlay.
-func HelpFooter(width int) string {
-	return RenderFooter([]HelpBinding{
-		{"esc/?", "close"},
-	}, width)
-}
