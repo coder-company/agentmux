@@ -2,6 +2,14 @@
 
 ## v0.2.0 — 2025-05-24
 
+### Documentation
+
+- Full README with terminal mockup, install methods, keybinding tables,
+  config reference, troubleshooting guide, and architecture overview
+- ARCHITECTURE.md with dependency graph, package responsibilities,
+  data flow, process lifecycle, and testing strategy
+- Shell alias documentation for bash, zsh, and fish
+
 ### TUI Overhaul
 
 - Header bar with brand, mode indicator, session count
