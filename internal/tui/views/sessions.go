@@ -10,22 +10,18 @@ import (
 
 // SessionsView is the main sessions browser.
 type SessionsView struct {
-	List    components.SessionList
-	Preview components.Preview
-	Help    *components.HelpBar
-	Client  *tmux.Client
-	Width   int
-	Height  int
-	Status  string
-	Loaded  bool
+	List   components.SessionList
+	Pane   components.Preview
+	Client *tmux.Client
+	Width  int
+	Height int
+	Status string
+	Loaded bool
 }
 
 // NewSessionsView creates the sessions view.
 func NewSessionsView(client *tmux.Client) *SessionsView {
-	return &SessionsView{
-		Client: client,
-		Help:   components.DefaultHelp(),
-	}
+	return &SessionsView{Client: client}
 }
 
 // Refresh reloads sessions from tmux.
@@ -41,74 +37,68 @@ func (v *SessionsView) Refresh() {
 		v.List.Cursor = len(sessions) - 1
 	}
 	v.RefreshPreview()
+	v.Status = ""
 }
 
 // RefreshPreview loads the pane capture for the selected session.
 func (v *SessionsView) RefreshPreview() {
 	sel := v.List.Selected()
 	if sel == nil {
-		v.Preview = components.Preview{Title: "Preview"}
+		v.Pane = components.Preview{}
 		return
 	}
-	content, err := v.Client.CapturePane(sel.Name, 30)
+	content, err := v.Client.CapturePane(sel.Name, 40)
 	if err != nil {
-		v.Preview = components.Preview{
+		v.Pane = components.Preview{
 			Title: sel.Name,
-			Error: "Could not capture pane output",
+			Dir:   sel.Directory,
+			Error: "Could not capture pane",
 		}
 		return
 	}
-	v.Preview = components.Preview{
+	v.Pane = components.Preview{
 		Title:   sel.Name,
+		Dir:     sel.Directory,
 		Content: content,
 	}
 }
 
 // Render returns the full sessions view.
-func (v *SessionsView) Render() string {
-	if v.Width == 0 || v.Height == 0 {
-		return "Loading..."
+func (v *SessionsView) Render(bodyHeight int) string {
+	if v.Width < 20 || bodyHeight < 4 {
+		return styles.Muted.Render("Terminal too small")
 	}
 
-	leftWidth := v.Width / 3
-	if leftWidth < 28 {
-		leftWidth = 28
+	// Calculate panel widths
+	leftWidth := v.Width * 30 / 100
+	if leftWidth < 24 {
+		leftWidth = 24
 	}
-	if leftWidth > v.Width-20 {
-		leftWidth = v.Width - 20
+	if leftWidth > 50 {
+		leftWidth = 50
 	}
-	rightWidth := v.Width - leftWidth - 4
-	if rightWidth < 10 {
-		rightWidth = 10
+	rightWidth := v.Width - leftWidth - 4 // borders eat 4 chars
+	if rightWidth < 12 {
+		rightWidth = 12
 	}
 
-	panelHeight := v.Height - 4
+	panelHeight := bodyHeight
 	if panelHeight < 3 {
 		panelHeight = 3
 	}
+	innerHeight := panelHeight - 2 // border top + bottom
 
 	// Left panel: session list
-	listTitle := styles.Title.Render("Sessions")
+	leftTitle := styles.PanelTitle.Render("Sessions")
 	if !v.Loaded {
-		listTitle += " " + styles.Muted.Render("(loading…)")
+		leftTitle += " " + styles.Muted.Render("…")
 	}
-	listContent := listTitle + "\n" + v.List.Render(leftWidth-2)
-	left := styles.ActivePanel.Width(leftWidth).Height(panelHeight).Render(listContent)
+	listContent := leftTitle + "\n" + v.List.Render(leftWidth-4, innerHeight-1)
+	left := styles.PanelActive.Width(leftWidth).Height(panelHeight).Render(listContent)
 
 	// Right panel: preview
-	previewContent := v.Preview.Render(rightWidth-2, panelHeight)
+	previewContent := v.Pane.Render(rightWidth-4, innerHeight)
 	right := styles.Panel.Width(rightWidth).Height(panelHeight).Render(previewContent)
 
-	main := lipgloss.JoinHorizontal(lipgloss.Top, left, right)
-
-	// Status line
-	status := ""
-	if v.Status != "" {
-		status = styles.Muted.Render(v.Status)
-	}
-
-	// Help bar
-	help := v.Help.Render(v.Width)
-
-	return lipgloss.JoinVertical(lipgloss.Left, main, status, help)
+	return lipgloss.JoinHorizontal(lipgloss.Top, left, right)
 }

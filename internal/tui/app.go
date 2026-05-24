@@ -1,12 +1,17 @@
 package tui
 
 import (
+	"fmt"
+
 	"agentmux/internal/adapters/tmux"
 	"agentmux/internal/core"
 	"agentmux/internal/store"
+	"agentmux/internal/tui/components"
+	"agentmux/internal/tui/styles"
 	"agentmux/internal/tui/views"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // View represents which view is active.
@@ -16,6 +21,7 @@ const (
 	ViewSessions View = iota
 	ViewPalette
 	ViewLauncher
+	ViewHelp
 )
 
 // Model is the top-level Bubble Tea model.
@@ -24,8 +30,11 @@ type Model struct {
 	sessions     *views.SessionsView
 	palette      *views.PaletteView
 	launcher     *views.LauncherView
+	help         *views.HelpOverlay
+	header       components.Header
 	client       *tmux.Client
 	store        *store.Store
+	workspaces   []core.Workspace
 	width        int
 	height       int
 	quitting     bool
@@ -34,6 +43,7 @@ type Model struct {
 	confirmName  string
 	renaming     bool
 	renameBuffer string
+	prevG        bool // for gg binding
 }
 
 // RefreshMsg triggers a session list refresh.
@@ -42,20 +52,21 @@ type RefreshMsg struct{}
 // NewModel creates the top-level app model.
 func NewModel(client *tmux.Client, st *store.Store, workspaces []core.Workspace) Model {
 	sessView := views.NewSessionsView(client)
-	palette := views.NewPalette(defaultActions())
 	launcher := views.NewLauncher(workspaces)
 
 	return Model{
-		view:     ViewSessions,
-		sessions: sessView,
-		palette:  palette,
-		launcher: launcher,
-		client:   client,
-		store:    st,
+		view:       ViewSessions,
+		sessions:   sessView,
+		palette:    views.NewPalette(nil), // populated after first refresh
+		launcher:   launcher,
+		help:       &views.HelpOverlay{},
+		client:     client,
+		store:      st,
+		workspaces: workspaces,
 	}
 }
 
-// AttachTarget returns the session to attach to after the TUI exits, if any.
+// AttachTarget returns the session to attach to after the TUI exits.
 func (m Model) AttachTarget() string {
 	return m.attachName
 }
@@ -75,9 +86,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.palette.Height = msg.Height
 		m.launcher.Width = msg.Width
 		m.launcher.Height = msg.Height
+		m.help.Width = msg.Width
+		m.help.Height = msg.Height
+		m.header.Width = msg.Width
 
 	case RefreshMsg:
 		m.sessions.Refresh()
+		m.header.SessionCount = len(m.sessions.List.Sessions)
+		m.rebuildPalette()
 
 	case tea.KeyMsg:
 		return m.handleKey(msg)
@@ -86,7 +102,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	// Kill confirmation mode
+	// Kill confirmation mode — highest priority
 	if m.confirmKill {
 		return m.handleConfirmKey(msg)
 	}
@@ -94,6 +110,15 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Rename mode
 	if m.renaming {
 		return m.handleRenameKey(msg)
+	}
+
+	// Help overlay
+	if m.view == ViewHelp {
+		switch msg.String() {
+		case "esc", "?", "q":
+			m.view = ViewSessions
+		}
+		return m, nil
 	}
 
 	// Palette mode
@@ -107,17 +132,40 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Sessions mode
-	switch msg.String() {
+	return m.handleSessionsKey(msg)
+}
+
+func (m Model) handleSessionsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	key := msg.String()
+
+	// gg binding
+	if m.prevG {
+		m.prevG = false
+		if key == "g" {
+			m.sessions.List.MoveTop()
+			m.sessions.RefreshPreview()
+			return m, nil
+		}
+	}
+
+	switch key {
 	case "q", "ctrl+c":
 		m.quitting = true
 		return m, tea.Quit
 
-	case "up", "ctrl+p":
+	case "up", "k":
 		m.sessions.List.MoveUp()
 		m.sessions.RefreshPreview()
 
-	case "down", "ctrl+n":
+	case "down", "j":
 		m.sessions.List.MoveDown()
+		m.sessions.RefreshPreview()
+
+	case "g":
+		m.prevG = true
+
+	case "G":
+		m.sessions.List.MoveBottom()
 		m.sessions.RefreshPreview()
 
 	case "enter":
@@ -132,32 +180,40 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "n":
 		name := generateSessionName(m.sessions.List.Sessions)
 		if err := m.client.NewSession(name, ""); err == nil {
-			m.sessions.Status = "✓ Created: " + name
-			m.sessions.Refresh()
+			m.sessions.Status = "✓ Created " + name
+			m.doRefresh()
 		} else {
 			m.sessions.Status = "✗ " + err.Error()
 		}
 
-	case "k":
+	case "x":
 		if sel := m.sessions.List.Selected(); sel != nil {
 			m.confirmKill = true
 			m.confirmName = sel.Name
-			m.sessions.Status = "Kill session \"" + sel.Name + "\"? [y/N]"
+			m.sessions.Status = fmt.Sprintf("Kill \"%s\"? y/n", sel.Name)
 		}
 
 	case "r":
 		if sel := m.sessions.List.Selected(); sel != nil {
 			m.renaming = true
 			m.renameBuffer = sel.Name
-			m.sessions.Status = "Rename to: " + m.renameBuffer + "█"
+			m.sessions.Status = "Rename: " + m.renameBuffer + "│"
 		}
 
+	case "R":
+		m.doRefresh()
+		m.sessions.Status = "✓ Refreshed"
+
 	case "/":
+		m.rebuildPalette()
 		m.view = ViewPalette
 		m.palette.SetQuery("")
 
 	case "p":
 		m.view = ViewLauncher
+
+	case "?":
+		m.view = ViewHelp
 	}
 
 	return m, nil
@@ -167,21 +223,19 @@ func (m Model) handleConfirmKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "y", "Y":
 		if err := m.client.KillSession(m.confirmName); err == nil {
-			m.sessions.Status = "✓ Killed: " + m.confirmName
+			m.sessions.Status = "✓ Killed " + m.confirmName
 			if m.store != nil {
 				m.store.RemoveSession(m.confirmName)
 			}
-			m.sessions.Refresh()
+			m.doRefresh()
 		} else {
 			m.sessions.Status = "✗ " + err.Error()
 		}
-		m.confirmKill = false
-		m.confirmName = ""
 	default:
-		m.confirmKill = false
-		m.confirmName = ""
 		m.sessions.Status = ""
 	}
+	m.confirmKill = false
+	m.confirmName = ""
 	return m, nil
 }
 
@@ -195,8 +249,8 @@ func (m Model) handleRenameKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			} else if err := m.client.RenameSession(sel.Name, m.renameBuffer); err != nil {
 				m.sessions.Status = "✗ " + err.Error()
 			} else {
-				m.sessions.Status = "✓ Renamed: " + sel.Name + " → " + m.renameBuffer
-				m.sessions.Refresh()
+				m.sessions.Status = "✓ Renamed → " + m.renameBuffer
+				m.doRefresh()
 			}
 		}
 		m.renaming = false
@@ -209,12 +263,12 @@ func (m Model) handleRenameKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if len(m.renameBuffer) > 0 {
 			m.renameBuffer = m.renameBuffer[:len(m.renameBuffer)-1]
 		}
-		m.sessions.Status = "Rename to: " + m.renameBuffer + "█"
+		m.sessions.Status = "Rename: " + m.renameBuffer + "│"
 	default:
 		ch := msg.String()
 		if len(ch) == 1 {
 			m.renameBuffer += ch
-			m.sessions.Status = "Rename to: " + m.renameBuffer + "█"
+			m.sessions.Status = "Rename: " + m.renameBuffer + "│"
 		}
 	}
 	return m, nil
@@ -229,10 +283,11 @@ func (m Model) handlePaletteKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "down", "ctrl+n":
 		m.palette.MoveDown()
 	case "enter":
-		if sel := m.palette.Selected(); sel != nil && sel.Do != nil {
-			sel.Do()
+		if sel := m.palette.Selected(); sel != nil {
 			m.view = ViewSessions
-			m.sessions.Refresh()
+			if sel.Do != nil {
+				sel.Do()
+			}
 		}
 	case "backspace":
 		m.palette.Backspace()
@@ -248,22 +303,31 @@ func (m Model) handleLauncherKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc", "q":
 		m.view = ViewSessions
-	case "up", "ctrl+p":
+	case "up", "k":
 		m.launcher.MoveUp()
-	case "down", "ctrl+n":
+	case "down", "j":
 		m.launcher.MoveDown()
 	case "tab":
 		m.launcher.ToggleCommands()
 	case "enter":
 		ws := m.launcher.SelectedWorkspace()
-		if ws != nil {
-			if err := m.client.NewSession(ws.Name, ws.Root); err == nil {
-				m.sessions.Status = "✓ Launched: " + ws.Name
-				m.view = ViewSessions
-				m.sessions.Refresh()
-			} else {
-				m.sessions.Status = "✗ " + err.Error()
+		if ws == nil {
+			break
+		}
+		// If in commands mode and a command is selected, use workspace-command naming
+		sessionName := ws.Name
+		if m.launcher.InCommands {
+			if cmd := m.launcher.SelectedCommand(); cmd != nil {
+				sessionName = ws.Name + "-" + cmd.Name
 			}
+		}
+		if err := m.client.NewSession(sessionName, ws.Root); err == nil {
+			m.sessions.Status = "✓ Launched " + sessionName
+			m.view = ViewSessions
+			m.doRefresh()
+		} else {
+			m.sessions.Status = "✗ " + err.Error()
+			m.view = ViewSessions
 		}
 	}
 	return m, nil
@@ -274,31 +338,132 @@ func (m Model) View() string {
 		return ""
 	}
 
+	if m.width == 0 || m.height == 0 {
+		return "Loading…"
+	}
+
+	// Overlays render on top of everything
 	switch m.view {
 	case ViewPalette:
 		return m.palette.Render()
 	case ViewLauncher:
 		return m.launcher.Render()
-	default:
-		return m.sessions.Render()
+	case ViewHelp:
+		return m.help.Render()
 	}
+
+	// Main layout: header + body + status + footer
+	headerStr := m.header.Render()
+	headerH := lipgloss.Height(headerStr)
+
+	footerStr := components.SessionsFooter(m.width)
+	footerH := lipgloss.Height(footerStr)
+
+	statusStr := ""
+	statusH := 0
+	if m.sessions.Status != "" {
+		statusStr = styles.StatusBar.Width(m.width).Render(m.sessions.Status)
+		statusH = 1
+	}
+
+	bodyHeight := m.height - headerH - footerH - statusH
+	if bodyHeight < 3 {
+		bodyHeight = 3
+	}
+
+	bodyStr := m.sessions.Render(bodyHeight)
+
+	parts := []string{headerStr, bodyStr}
+	if statusStr != "" {
+		parts = append(parts, statusStr)
+	}
+	parts = append(parts, footerStr)
+
+	return lipgloss.JoinVertical(lipgloss.Left, parts...)
 }
 
-func defaultActions() []views.Action {
-	return []views.Action{
-		{Name: "New Session", Desc: "Create a new tmux session", Key: "n"},
-		{Name: "Kill Session", Desc: "Kill the selected session", Key: "k"},
-		{Name: "Rename Session", Desc: "Rename the selected session", Key: "r"},
-		{Name: "Workspaces", Desc: "Open workspace launcher", Key: "p"},
-		{Name: "Refresh", Desc: "Reload session list", Key: ""},
-		{Name: "Quit", Desc: "Exit agentmux", Key: "q"},
+// doRefresh refreshes sessions and updates header count.
+func (m *Model) doRefresh() {
+	m.sessions.Refresh()
+	m.header.SessionCount = len(m.sessions.List.Sessions)
+}
+
+// rebuildPalette builds the command palette actions from current state.
+func (m *Model) rebuildPalette() {
+	actions := []views.Action{
+		{Name: "New Session", Desc: "Create a detached session", Key: "n", Do: func() {
+			name := generateSessionName(m.sessions.List.Sessions)
+			if err := m.client.NewSession(name, ""); err == nil {
+				m.sessions.Status = "✓ Created " + name
+				m.doRefresh()
+			}
+		}},
+		{Name: "Kill Session", Desc: "Destroy selected session", Key: "x", Do: func() {
+			if sel := m.sessions.List.Selected(); sel != nil {
+				m.confirmKill = true
+				m.confirmName = sel.Name
+				m.sessions.Status = fmt.Sprintf("Kill \"%s\"? y/n", sel.Name)
+			}
+		}},
+		{Name: "Rename Session", Desc: "Rename selected session", Key: "r", Do: func() {
+			if sel := m.sessions.List.Selected(); sel != nil {
+				m.renaming = true
+				m.renameBuffer = sel.Name
+				m.sessions.Status = "Rename: " + m.renameBuffer + "│"
+			}
+		}},
+		{Name: "Refresh", Desc: "Reload session list", Key: "R", Do: func() {
+			m.doRefresh()
+			m.sessions.Status = "✓ Refreshed"
+		}},
+		{Name: "Workspaces", Desc: "Open workspace launcher", Key: "p", Do: func() {
+			m.view = ViewLauncher
+		}},
+		{Name: "Help", Desc: "Show keybindings", Key: "?", Do: func() {
+			m.view = ViewHelp
+		}},
+		{Name: "Quit", Desc: "Exit agentmux", Key: "q", Do: func() {
+			m.quitting = true
+		}},
 	}
+
+	// Add workspace launchers
+	for _, ws := range m.workspaces {
+		ws := ws
+		actions = append(actions, views.Action{
+			Name: "Launch: " + ws.Name,
+			Desc: ws.Root,
+			Do: func() {
+				if err := m.client.NewSession(ws.Name, ws.Root); err == nil {
+					m.sessions.Status = "✓ Launched " + ws.Name
+					m.doRefresh()
+				}
+			},
+		})
+	}
+
+	// Add session-specific actions
+	for _, s := range m.sessions.List.Sessions {
+		s := s
+		actions = append(actions, views.Action{
+			Name: "Attach: " + s.Name,
+			Desc: s.Directory,
+			Do: func() {
+				m.attachName = s.Name
+				if m.store != nil {
+					m.store.RecordSession(s.Name)
+				}
+				m.quitting = true
+			},
+		})
+	}
+
+	m.palette.UpdateActions(actions)
 }
 
 func generateSessionName(existing []core.Session) string {
-	base := "s"
 	for i := len(existing); ; i++ {
-		name := base + itoa(i)
+		name := fmt.Sprintf("s%d", i)
 		found := false
 		for _, s := range existing {
 			if s.Name == name {
@@ -310,16 +475,4 @@ func generateSessionName(existing []core.Session) string {
 			return name
 		}
 	}
-}
-
-func itoa(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	s := ""
-	for n > 0 {
-		s = string(rune('0'+n%10)) + s
-		n /= 10
-	}
-	return s
 }
