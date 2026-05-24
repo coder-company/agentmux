@@ -53,7 +53,7 @@ func (a *App) Close() {
 // RunTUI launches the full-screen terminal UI.
 func (a *App) RunTUI() error {
 	if !a.Client.Available() {
-		return fmt.Errorf("tmux is not installed or not in PATH")
+		return fmt.Errorf("tmux is not installed or not in PATH\n\nInstall tmux:\n  macOS:  brew install tmux\n  Debian: sudo apt install tmux\n  Arch:   sudo pacman -S tmux")
 	}
 
 	model := tui.NewModel(a.Client, a.Store, a.Workspaces)
