@@ -42,7 +42,7 @@ INSTALL_DIR=~/.local/bin curl -fsSL https://amux.coder.company/install.sh | sh
 ### From source
 
 ```bash
-git clone https://github.com/codercompany/agentmux
+git clone https://github.com/coder-company/agentmux
 cd agentmux
 make install
 ```
