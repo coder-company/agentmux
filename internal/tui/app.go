@@ -376,7 +376,7 @@ func (m Model) View() string {
 	statusStr := ""
 	statusH := 0
 	if m.sessions.Status != "" {
-		statusStr = styles.StatusBar.Width(m.width).Render(m.sessions.Status)
+		statusStr = styles.StatusInfo.Width(m.width).Render(m.sessions.Status)
 		statusH = 1
 	}
 

@@ -33,7 +33,7 @@ func (l *LauncherView) SelectedWorkspace() *core.Workspace {
 	return &l.Workspaces[l.Cursor]
 }
 
-// SelectedCommand returns the highlighted command within the workspace.
+// SelectedCommand returns the highlighted command.
 func (l *LauncherView) SelectedCommand() *core.Command {
 	ws := l.SelectedWorkspace()
 	if ws == nil || len(ws.Commands) == 0 {
@@ -45,32 +45,28 @@ func (l *LauncherView) SelectedCommand() *core.Command {
 	return &ws.Commands[l.CmdCursor]
 }
 
-// MoveUp moves cursor up in the current context.
+// MoveUp moves cursor up.
 func (l *LauncherView) MoveUp() {
 	if l.InCommands {
 		if l.CmdCursor > 0 {
 			l.CmdCursor--
 		}
-	} else {
-		if l.Cursor > 0 {
-			l.Cursor--
-			l.CmdCursor = 0
-		}
+	} else if l.Cursor > 0 {
+		l.Cursor--
+		l.CmdCursor = 0
 	}
 }
 
-// MoveDown moves cursor down in the current context.
+// MoveDown moves cursor down.
 func (l *LauncherView) MoveDown() {
 	if l.InCommands {
 		ws := l.SelectedWorkspace()
 		if ws != nil && l.CmdCursor < len(ws.Commands)-1 {
 			l.CmdCursor++
 		}
-	} else {
-		if l.Cursor < len(l.Workspaces)-1 {
-			l.Cursor++
-			l.CmdCursor = 0
-		}
+	} else if l.Cursor < len(l.Workspaces)-1 {
+		l.Cursor++
+		l.CmdCursor = 0
 	}
 }
 
@@ -82,21 +78,21 @@ func (l *LauncherView) ToggleCommands() {
 
 // Render returns the launcher as a centered overlay.
 func (l *LauncherView) Render() string {
-	w := l.Width * 55 / 100
+	w := l.Width * 50 / 100
 	if w < 44 {
 		w = 44
 	}
-	if w > 80 {
-		w = 80
+	if w > 72 {
+		w = 72
 	}
 
-	title := styles.PanelTitle.Render("Workspaces")
+	title := styles.OverlayTitle.Render("Workspaces")
 
 	if len(l.Workspaces) == 0 {
 		content := title + "\n\n" +
-			styles.Muted.Render("No workspaces configured.") + "\n\n" +
-			styles.Subtle.Render("Add [[workspaces]] to ~/.config/agentmux/config.toml") + "\n" +
-			styles.Subtle.Render("Run: agentmux init")
+			styles.Muted.Render("  No workspaces configured.") + "\n\n" +
+			styles.HeaderDim.Render("  Edit ~/.config/agentmux/config.toml") + "\n" +
+			styles.HeaderDim.Render("  Run: agentmux init")
 		box := styles.Overlay.Width(w).Render(content)
 		return lipgloss.Place(l.Width, l.Height, lipgloss.Center, lipgloss.Center, box)
 	}
@@ -104,30 +100,30 @@ func (l *LauncherView) Render() string {
 	var items string
 	for i, ws := range l.Workspaces {
 		name := ws.Name
-		root := styles.Muted.Render("  " + ws.Root)
+		root := "  " + styles.OverlayDim.Render(ws.Root)
 
 		if i == l.Cursor && !l.InCommands {
-			items += styles.Selected.Width(w-6).Render(name+root) + "\n"
+			items += styles.OverlaySelected.Width(w-6).Render("▸ "+name+root) + "\n"
 		} else if i == l.Cursor {
-			items += styles.Bold.Render("▸ "+name) + root + "\n"
+			items += styles.Bold.Render("  ▾ "+name) + root + "\n"
 		} else {
-			items += styles.Normal.Render("  "+name) + root + "\n"
+			items += styles.OverlayNormal.Render("  "+name) + root + "\n"
 		}
 
-		// Show commands for selected workspace
 		if i == l.Cursor && l.InCommands && len(ws.Commands) > 0 {
 			for j, cmd := range ws.Commands {
-				cmdLine := "    " + cmd.Name + "  " + styles.Subtle.Render(cmd.Cmd)
+				line := "      " + cmd.Name + "  " + styles.OverlayDim.Render(cmd.Cmd)
 				if j == l.CmdCursor {
-					items += styles.Selected.Width(w-6).Render(cmdLine) + "\n"
+					items += styles.OverlaySelected.Width(w-6).Render(line) + "\n"
 				} else {
-					items += styles.NormalDim.Render(cmdLine) + "\n"
+					items += styles.OverlayNormal.Render(line) + "\n"
 				}
 			}
 		}
 	}
 
-	content := title + "\n\n" + items
+	footer := styles.HeaderDim.Render("↑↓ move · tab cmds · ⏎ launch · esc back")
+	content := title + "\n\n" + items + "\n" + footer
 	box := styles.Overlay.Width(w).Render(content)
 	return lipgloss.Place(l.Width, l.Height, lipgloss.Center, lipgloss.Center, box)
 }

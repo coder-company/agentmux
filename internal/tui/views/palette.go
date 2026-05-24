@@ -12,8 +12,8 @@ import (
 type Action struct {
 	Name string
 	Desc string
-	Key  string // shortcut hint
-	Do   func() // nil = handled by caller
+	Key  string
+	Do   func()
 }
 
 // PaletteView is the fuzzy command palette.
@@ -34,7 +34,7 @@ func NewPalette(actions []Action) *PaletteView {
 	}
 }
 
-// UpdateActions replaces the action list (used when sessions change).
+// UpdateActions replaces the action list.
 func (p *PaletteView) UpdateActions(actions []Action) {
 	p.Actions = actions
 	p.SetQuery(p.Query)
@@ -59,7 +59,6 @@ func (p *PaletteView) SetQuery(q string) {
 	p.Filtered = filtered
 }
 
-// fuzzyContains checks if all chars in needle appear in haystack in order.
 func fuzzyContains(haystack, needle string) bool {
 	hi := 0
 	for _, ch := range needle {
@@ -118,26 +117,24 @@ func (p *PaletteView) MoveDown() {
 
 // Render returns the palette as a centered overlay.
 func (p *PaletteView) Render() string {
-	w := p.Width * 55 / 100
+	w := p.Width * 50 / 100
 	if w < 44 {
 		w = 44
 	}
-	if w > 80 {
-		w = 80
+	if w > 72 {
+		w = 72
 	}
 
-	maxItems := p.Height - 8
+	maxItems := p.Height - 10
 	if maxItems < 3 {
 		maxItems = 3
 	}
 
-	// Header + search prompt
-	title := styles.PanelTitle.Render("Command Palette")
-	prompt := styles.Prompt.Render("> ") +
-		styles.Input.Render(p.Query) +
-		styles.Cursor.Render("│")
+	title := styles.OverlayTitle.Render("Commands")
+	prompt := styles.OverlayPrompt.Render("❯ ") +
+		styles.OverlayInput.Render(p.Query) +
+		styles.OverlayPrompt.Render("│")
 
-	// Items
 	var items string
 	visible := p.Filtered
 	if len(visible) > maxItems {
@@ -146,31 +143,25 @@ func (p *PaletteView) Render() string {
 
 	for i, a := range visible {
 		name := a.Name
-		shortcut := ""
 		if a.Key != "" {
-			shortcut = styles.Muted.Render("  " + a.Key)
+			name += "  " + styles.OverlayDim.Render(a.Key)
 		}
 
 		if i == p.Cursor {
-			items += styles.Selected.Width(w-6).Render(name+shortcut) + "\n"
+			items += styles.OverlaySelected.Width(w-6).Render(name) + "\n"
 		} else {
-			desc := ""
-			if a.Desc != "" {
-				desc = "  " + styles.Subtle.Render(a.Desc)
-			}
-			items += styles.Normal.Width(w-6).Render(name+shortcut) + desc + "\n"
+			items += styles.OverlayNormal.Render(name) + "\n"
 		}
 	}
 
 	if len(p.Filtered) == 0 {
-		items = styles.Muted.Render("  No matching commands")
+		items = styles.Muted.Render("  no matches")
 	}
 
-	content := title + "\n" + prompt + "\n\n" + items
+	footer := styles.HeaderDim.Render("↑↓ move · ⏎ select · esc close")
+	content := title + "\n" + prompt + "\n\n" + items + "\n" + footer
 	box := styles.Overlay.Width(w).Render(content)
 
-	// Center the overlay
 	return lipgloss.Place(p.Width, p.Height,
-		lipgloss.Center, lipgloss.Center,
-		box)
+		lipgloss.Center, lipgloss.Center, box)
 }

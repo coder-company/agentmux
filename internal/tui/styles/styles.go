@@ -2,146 +2,160 @@ package styles
 
 import "github.com/charmbracelet/lipgloss"
 
-// Colors - a refined dark theme with purple accents.
+// Colors
 var (
-	ColorPrimary    = lipgloss.Color("#A78BFA") // violet-400
-	ColorAccent     = lipgloss.Color("#7C3AED") // violet-600
-	ColorMuted      = lipgloss.Color("#6B7280") // gray-500
-	ColorSubtle     = lipgloss.Color("#4B5563") // gray-600
-	ColorSuccess    = lipgloss.Color("#34D399") // emerald-400
-	ColorDanger     = lipgloss.Color("#F87171") // red-400
-	ColorWarning    = lipgloss.Color("#FBBF24") // amber-400
-	ColorBorder     = lipgloss.Color("#374151") // gray-700
-	ColorBorderDim  = lipgloss.Color("#1F2937") // gray-800
-	ColorFg         = lipgloss.Color("#F9FAFB") // gray-50
-	ColorFgDim      = lipgloss.Color("#D1D5DB") // gray-300
-	ColorBg         = lipgloss.Color("#111827") // gray-900
-	ColorBgElevated = lipgloss.Color("#1F2937") // gray-800
+	Purple    = lipgloss.Color("#A78BFA")
+	PurpleDim = lipgloss.Color("#7C3AED")
+	Cyan      = lipgloss.Color("#67E8F9")
+	Green     = lipgloss.Color("#6EE7B7")
+	Red       = lipgloss.Color("#FCA5A5")
+	Yellow    = lipgloss.Color("#FDE68A")
+	White     = lipgloss.Color("#F9FAFB")
+	Gray100   = lipgloss.Color("#F3F4F6")
+	Gray300   = lipgloss.Color("#D1D5DB")
+	Gray400   = lipgloss.Color("#9CA3AF")
+	Gray500   = lipgloss.Color("#6B7280")
+	Gray600   = lipgloss.Color("#4B5563")
+	Gray700   = lipgloss.Color("#374151")
+	Gray800   = lipgloss.Color("#1F2937")
+	Gray900   = lipgloss.Color("#111827")
 )
 
-// Layout styles
+// Layout
 var (
-	// Header bar at the top
-	Header = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(ColorFg).
-		Padding(0, 1)
+	HeaderStyle = lipgloss.NewStyle().
+			Foreground(Gray400).
+			Padding(0, 1)
 
 	HeaderBrand = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(ColorPrimary)
-
-	HeaderMeta = lipgloss.NewStyle().
-			Foreground(ColorMuted)
-
-	// Panel containers
-	Panel = lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(ColorBorder).
-		Padding(0, 1)
-
-	PanelActive = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(ColorPrimary).
-			Padding(0, 1)
-
-	PanelTitle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(ColorPrimary)
-
-	PanelTitleDim = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(ColorMuted)
-
-	// Footer help bar
-	Footer = lipgloss.NewStyle().
-		Foreground(ColorMuted).
-		Padding(0, 1)
-
-	FooterKey = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(ColorFgDim)
-
-	FooterDesc = lipgloss.NewStyle().
-			Foreground(ColorSubtle)
-
-	FooterSep = lipgloss.NewStyle().
-			Foreground(ColorBorderDim)
-)
-
-// Content styles
-var (
-	// List items
-	Selected = lipgloss.NewStyle().
-			Foreground(ColorFg).
-			Background(ColorAccent).
-			Bold(true).
-			Padding(0, 1)
-
-	Normal = lipgloss.NewStyle().
-		Foreground(ColorFgDim).
-		Padding(0, 1)
-
-	NormalDim = lipgloss.NewStyle().
-			Foreground(ColorMuted).
-			Padding(0, 1)
-
-	// Indicators
-	Attached = lipgloss.NewStyle().
-			Foreground(ColorSuccess).
+			Foreground(Purple).
 			Bold(true)
 
-	Detached = lipgloss.NewStyle().
-			Foreground(ColorSubtle)
+	HeaderDim = lipgloss.NewStyle().
+			Foreground(Gray600)
 
-	// Text
-	Muted = lipgloss.NewStyle().
-		Foreground(ColorMuted)
+	Separator = lipgloss.NewStyle().
+			Foreground(Gray700)
 
-	Subtle = lipgloss.NewStyle().
-		Foreground(ColorSubtle)
+	PanelBorder = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(Gray700)
 
-	Success = lipgloss.NewStyle().
-		Foreground(ColorSuccess)
+	PanelBorderActive = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(Purple)
 
-	Danger = lipgloss.NewStyle().
-		Foreground(ColorDanger)
+	PanelTitle = lipgloss.NewStyle().
+			Foreground(Gray400).
+			Bold(true)
 
-	Warning = lipgloss.NewStyle().
-		Foreground(ColorWarning)
-
-	Bold = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(ColorFg)
-
-	// Status bar
-	StatusBar = lipgloss.NewStyle().
-			Foreground(ColorMuted).
+	FooterStyle = lipgloss.NewStyle().
+			Foreground(Gray600).
 			Padding(0, 1)
 
-	StatusSuccess = lipgloss.NewStyle().
-			Foreground(ColorSuccess).
+	FooterKey = lipgloss.NewStyle().
+			Foreground(Gray300).
+			Bold(true)
+
+	FooterDesc = lipgloss.NewStyle().
+			Foreground(Gray600)
+)
+
+// Session list
+var (
+	// Selected row — full-width inverse
+	ListSelected = lipgloss.NewStyle().
+			Background(PurpleDim).
+			Foreground(White).
+			Bold(true).
 			Padding(0, 1)
 
-	StatusError = lipgloss.NewStyle().
-			Foreground(ColorDanger).
+	// Normal row
+	ListNormal = lipgloss.NewStyle().
+			Foreground(Gray300).
 			Padding(0, 1)
 
-	// Overlay/modal
-	Overlay = lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(ColorPrimary).
-		Padding(1, 2)
+	// Metadata on normal rows
+	ListMeta = lipgloss.NewStyle().
+			Foreground(Gray500)
 
-	// Input prompt
-	Prompt = lipgloss.NewStyle().
-		Foreground(ColorPrimary).
+	// Attached dot
+	ListDot = lipgloss.NewStyle().
+		Foreground(Green).
 		Bold(true)
 
-	Input = lipgloss.NewStyle().
-		Foreground(ColorFg)
+	// Cursor arrow on selected
+	ListCursor = lipgloss.NewStyle().
+			Foreground(Purple).
+			Bold(true)
+)
 
-	Cursor = lipgloss.NewStyle().
-		Foreground(ColorPrimary).
+// Preview
+var (
+	PreviewTitle = lipgloss.NewStyle().
+			Foreground(Purple).
+			Bold(true)
+
+	PreviewPath = lipgloss.NewStyle().
+			Foreground(Gray500)
+
+	PreviewContent = lipgloss.NewStyle().
+			Foreground(Gray400)
+
+	PreviewDim = lipgloss.NewStyle().
+			Foreground(Gray600)
+)
+
+// Overlay
+var (
+	Overlay = lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(Purple).
+		Padding(1, 2)
+
+	OverlayTitle = lipgloss.NewStyle().
+			Foreground(Purple).
+			Bold(true)
+
+	OverlaySelected = lipgloss.NewStyle().
+			Background(PurpleDim).
+			Foreground(White).
+			Bold(true).
+			Padding(0, 1)
+
+	OverlayNormal = lipgloss.NewStyle().
+			Foreground(Gray300).
+			Padding(0, 1)
+
+	OverlayDim = lipgloss.NewStyle().
+			Foreground(Gray500)
+
+	OverlayPrompt = lipgloss.NewStyle().
+			Foreground(Purple).
+			Bold(true)
+
+	OverlayInput = lipgloss.NewStyle().
+			Foreground(White)
+)
+
+// Status
+var (
+	StatusOk = lipgloss.NewStyle().
+			Foreground(Green).
+			Padding(0, 1)
+
+	StatusErr = lipgloss.NewStyle().
+			Foreground(Red).
+			Padding(0, 1)
+
+	StatusInfo = lipgloss.NewStyle().
+			Foreground(Gray400).
+			Padding(0, 1)
+
+	Muted = lipgloss.NewStyle().
+		Foreground(Gray500)
+
+	Bold = lipgloss.NewStyle().
+		Foreground(White).
 		Bold(true)
 )

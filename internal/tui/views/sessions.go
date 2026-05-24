@@ -48,7 +48,6 @@ func (v *SessionsView) RefreshPreview() {
 		return
 	}
 
-	// Get window names for detail
 	var windowNames []string
 	if wins, err := v.Client.ListWindows(sel.Name); err == nil {
 		windowNames = wins
@@ -60,7 +59,7 @@ func (v *SessionsView) RefreshPreview() {
 			Title:   sel.Name,
 			Dir:     sel.Directory,
 			Windows: windowNames,
-			Error:   "Could not capture pane",
+			Error:   "could not capture pane",
 		}
 		return
 	}
@@ -72,42 +71,44 @@ func (v *SessionsView) RefreshPreview() {
 	}
 }
 
-// Render returns the full sessions view.
+// Render returns the full two-panel sessions view.
 func (v *SessionsView) Render(bodyHeight int) string {
-	if v.Width < 20 || bodyHeight < 4 {
-		return styles.Muted.Render("Terminal too small")
+	if v.Width < 40 || bodyHeight < 5 {
+		return styles.Muted.Render(" Terminal too small. Resize to continue.")
 	}
 
-	// Calculate panel widths
-	leftWidth := v.Width * 30 / 100
-	if leftWidth < 24 {
-		leftWidth = 24
+	// Panel sizing: 35% left, rest right
+	leftOuter := v.Width * 35 / 100
+	if leftOuter < 28 {
+		leftOuter = 28
 	}
-	if leftWidth > 50 {
-		leftWidth = 50
+	if leftOuter > 50 {
+		leftOuter = 50
 	}
-	rightWidth := v.Width - leftWidth - 4 // borders eat 4 chars
-	if rightWidth < 12 {
-		rightWidth = 12
+	rightOuter := v.Width - leftOuter - 1 // 1 char gap between panels
+
+	panelH := bodyHeight
+	innerH := panelH - 2 // top + bottom border
+	if innerH < 1 {
+		innerH = 1
 	}
 
-	panelHeight := bodyHeight
-	if panelHeight < 3 {
-		panelHeight = 3
-	}
-	innerHeight := panelHeight - 2 // border top + bottom
-
-	// Left panel: session list
-	leftTitle := styles.PanelTitle.Render("Sessions")
-	if !v.Loaded {
-		leftTitle += " " + styles.Muted.Render("…")
-	}
-	listContent := leftTitle + "\n" + v.List.Render(leftWidth-4, innerHeight-1)
-	left := styles.PanelActive.Width(leftWidth).Height(panelHeight).Render(listContent)
+	// Left panel: sessions
+	leftInner := leftOuter - 4 // border(2) + padding(2)
+	listContent := v.List.Render(leftInner, innerH)
+	left := styles.PanelBorderActive.
+		Width(leftOuter).
+		Height(panelH).
+		Render(listContent)
 
 	// Right panel: preview
-	previewContent := v.Pane.Render(rightWidth-4, innerHeight)
-	right := styles.Panel.Width(rightWidth).Height(panelHeight).Render(previewContent)
+	rightInner := rightOuter - 4
+	previewContent := v.Pane.Render(rightInner, innerH)
+	right := styles.PanelBorder.
+		Width(rightOuter).
+		Height(panelH).
+		Render(previewContent)
 
-	return lipgloss.JoinHorizontal(lipgloss.Top, left, right)
+	gap := lipgloss.NewStyle().Width(1).Render(" ")
+	return lipgloss.JoinHorizontal(lipgloss.Top, left, gap, right)
 }

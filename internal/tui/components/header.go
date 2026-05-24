@@ -8,33 +8,44 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// Header renders the top bar with app name, mode, and session count.
+// Header renders the top bar.
 type Header struct {
 	Mode         string
 	SessionCount int
 	Width        int
 }
 
-// Render returns the header bar.
+// Render returns the header.
 func (h *Header) Render() string {
 	brand := styles.HeaderBrand.Render("⣿ agentmux")
 
-	mode := ""
-	if h.Mode != "" {
-		mode = styles.Muted.Render(" · ") + styles.HeaderMeta.Render(h.Mode)
+	var right string
+	if h.SessionCount > 0 {
+		right = styles.HeaderDim.Render(fmt.Sprintf("%d sessions", h.SessionCount))
+	} else {
+		right = styles.HeaderDim.Render("no sessions")
 	}
 
-	count := styles.HeaderMeta.Render(fmt.Sprintf("%d sessions", h.SessionCount))
+	if h.Mode != "" {
+		right = styles.Muted.Render("["+h.Mode+"]") + "  " + right
+	}
 
-	left := brand + mode
-	right := count
-
-	gap := h.Width - lipgloss.Width(left) - lipgloss.Width(right) - 2
+	gap := h.Width - lipgloss.Width(brand) - lipgloss.Width(right) - 2
 	if gap < 1 {
 		gap = 1
 	}
-	spacer := lipgloss.NewStyle().Width(gap).Render("")
 
-	row := lipgloss.JoinHorizontal(lipgloss.Center, left, spacer, right)
-	return styles.Header.Width(h.Width).Render(row)
+	row := brand + lipgloss.NewStyle().Width(gap).Render("") + right
+	header := styles.HeaderStyle.Width(h.Width).Render(row)
+	rule := styles.Separator.Width(h.Width).Render(repeatChar('─', h.Width))
+
+	return header + "\n" + rule
+}
+
+func repeatChar(ch rune, n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = ch
+	}
+	return string(b)
 }

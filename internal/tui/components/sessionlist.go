@@ -54,13 +54,14 @@ func (sl *SessionList) MoveBottom() {
 	}
 }
 
-// Render returns the string representation.
+// Render returns the rendered list.
 func (sl *SessionList) Render(width, height int) string {
 	if len(sl.Sessions) == 0 {
-		empty := styles.Muted.Render("No tmux sessions") + "\n\n"
-		empty += styles.Subtle.Render("  n") + styles.Muted.Render("  create session") + "\n"
-		empty += styles.Subtle.Render("  p") + styles.Muted.Render("  launch workspace") + "\n"
-		return empty
+		out := "\n"
+		out += styles.Muted.Render("  No tmux sessions running.") + "\n\n"
+		out += styles.HeaderDim.Render("  n") + styles.Muted.Render("  new session") + "\n"
+		out += styles.HeaderDim.Render("  p") + styles.Muted.Render("  launch workspace") + "\n"
+		return out
 	}
 
 	var out string
@@ -69,28 +70,26 @@ func (sl *SessionList) Render(width, height int) string {
 			break
 		}
 
-		// Status indicator
-		var indicator string
+		// Build the line content
+		dot := "  "
 		if s.Attached {
-			indicator = styles.Attached.Render("● ")
-		} else {
-			indicator = styles.Detached.Render("  ")
+			dot = styles.ListDot.Render("● ")
 		}
 
-		// Session name and metadata
 		name := s.Name
-		meta := fmt.Sprintf(" %d win", s.Windows)
+		meta := fmt.Sprintf("  %dw", s.Windows)
 		if !s.Created.IsZero() {
-			meta += " · " + relativeTime(s.Created)
+			meta += " " + relativeTime(s.Created)
 		}
 
 		if i == sl.Cursor {
-			label := indicator + name
-			out += styles.Selected.Width(width).Render(label) + "\n"
+			// Selected: highlighted full row with arrow
+			line := "▸ " + dot + name + styles.ListMeta.Render(meta)
+			out += styles.ListSelected.Width(width).Render(line) + "\n"
 		} else {
-			nameStr := styles.Normal.Render(indicator + name)
-			metaStr := styles.Muted.Render(meta)
-			out += nameStr + metaStr + "\n"
+			// Normal row
+			line := "  " + dot + styles.ListNormal.Render(name) + styles.ListMeta.Render(meta)
+			out += line + "\n"
 		}
 	}
 	return out

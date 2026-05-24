@@ -15,84 +15,64 @@ type Preview struct {
 	Error   string
 }
 
-// Render returns the preview panel content.
+// Render returns the preview panel content, fitting within width x height.
 func (p *Preview) Render(width, height int) string {
 	if width < 4 || height < 2 {
 		return ""
 	}
 
-	// Title line with session name and directory
-	var titleLine string
+	var lines []string
+
+	// Title
 	if p.Title != "" {
-		titleLine = styles.PanelTitle.Render(p.Title)
+		title := styles.PreviewTitle.Render(p.Title)
 		if p.Dir != "" {
-			titleLine += " " + styles.Muted.Render(p.Dir)
+			title += "  " + styles.PreviewPath.Render(p.Dir)
 		}
+		lines = append(lines, title)
 	} else {
-		titleLine = styles.PanelTitleDim.Render("Preview")
+		lines = append(lines, styles.PreviewPath.Render("no session selected"))
 	}
 
-	// Window list
-	var windowLine string
+	// Windows
 	if len(p.Windows) > 0 {
-		names := strings.Join(p.Windows, " │ ")
-		windowLine = styles.Subtle.Render("windows: " + names)
+		winLine := styles.PreviewDim.Render("win: " + strings.Join(p.Windows, ", "))
+		lines = append(lines, winLine)
 	}
 
+	lines = append(lines, "") // spacer
+
+	// Error state
 	if p.Error != "" {
-		out := titleLine + "\n"
-		if windowLine != "" {
-			out += windowLine + "\n"
-		}
-		out += "\n" + styles.Warning.Render("⚠ ") + styles.Muted.Render(p.Error)
-		return out
+		lines = append(lines, styles.Muted.Render("  "+p.Error))
+		return strings.Join(lines, "\n")
 	}
 
-	if p.Content == "" {
-		out := titleLine + "\n"
-		if windowLine != "" {
-			out += windowLine + "\n"
-		}
-		out += "\n" + styles.Muted.Render("No pane output captured.")
-		return out
+	// Empty state
+	if strings.TrimSpace(p.Content) == "" {
+		lines = append(lines, styles.Muted.Render("  (no output)"))
+		return strings.Join(lines, "\n")
 	}
 
-	// Trim trailing blank lines
+	// Content — last N lines that fit
 	content := strings.TrimRight(p.Content, "\n \t")
-	if content == "" {
-		out := titleLine + "\n"
-		if windowLine != "" {
-			out += windowLine + "\n"
-		}
-		out += "\n" + styles.Muted.Render("(empty)")
-		return out
+	contentLines := strings.Split(content, "\n")
+	available := height - len(lines)
+	if available < 1 {
+		available = 1
 	}
-
-	lines := strings.Split(content, "\n")
-	headerLines := 2 // title + blank
-	if windowLine != "" {
-		headerLines = 3
-	}
-	maxLines := height - headerLines
-	if maxLines < 1 {
-		maxLines = 1
-	}
-	if len(lines) > maxLines {
-		lines = lines[len(lines)-maxLines:]
+	if len(contentLines) > available {
+		contentLines = contentLines[len(contentLines)-available:]
 	}
 
 	// Truncate long lines
-	for i, line := range lines {
+	for i, line := range contentLines {
 		runes := []rune(line)
-		if len(runes) > width-1 {
-			lines[i] = string(runes[:width-2]) + "…"
+		if len(runes) > width {
+			contentLines[i] = string(runes[:width-1]) + "…"
 		}
 	}
 
-	out := titleLine + "\n"
-	if windowLine != "" {
-		out += windowLine + "\n"
-	}
-	out += strings.Join(lines, "\n")
-	return out
+	lines = append(lines, contentLines...)
+	return strings.Join(lines, "\n")
 }
