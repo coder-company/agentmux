@@ -20,7 +20,6 @@ const (
 
 // Model is the top-level Bubble Tea model.
 type Model struct {
-	keys         KeyMap
 	view         View
 	sessions     *views.SessionsView
 	palette      *views.PaletteView
@@ -47,7 +46,6 @@ func NewModel(client *tmux.Client, st *store.Store, workspaces []core.Workspace)
 	launcher := views.NewLauncher(workspaces)
 
 	return Model{
-		keys:     DefaultKeys(),
 		view:     ViewSessions,
 		sessions: sessView,
 		palette:  palette,
