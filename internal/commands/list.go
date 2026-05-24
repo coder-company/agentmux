@@ -2,6 +2,8 @@ package commands
 
 import (
 	"fmt"
+	"os"
+	"text/tabwriter"
 
 	"agentmux/internal/adapters/tmux"
 
@@ -15,22 +17,28 @@ func listCmd() *cobra.Command {
 		Aliases: []string{"ls"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := tmux.New()
+			if !client.Available() {
+				return errTmuxMissing
+			}
 			sessions, err := client.ListSessions()
 			if err != nil {
-				return err
+				return fmt.Errorf("could not list sessions: %w", err)
 			}
 			if len(sessions) == 0 {
-				fmt.Println("No tmux sessions running.")
+				fmt.Println("No active tmux sessions.")
 				return nil
 			}
+
+			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+			fmt.Fprintf(w, "NAME\tWINDOWS\tDIRECTORY\tSTATUS\n")
 			for _, s := range sessions {
-				attached := ""
+				status := ""
 				if s.Attached {
-					attached = " (attached)"
+					status = "attached"
 				}
-				fmt.Printf("%-20s %d windows  %s%s\n", s.Name, s.Windows, s.Directory, attached)
+				fmt.Fprintf(w, "%s\t%d\t%s\t%s\n", s.Name, s.Windows, s.Directory, status)
 			}
-			return nil
+			return w.Flush()
 		},
 	}
 }

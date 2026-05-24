@@ -8,8 +8,9 @@ import (
 )
 
 func main() {
-	if err := commands.Root().Execute(); err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+	cmd := commands.Root()
+	if err := cmd.Execute(); err != nil {
+		fmt.Fprintf(os.Stderr, "agentmux: %v\n", err)
 		os.Exit(1)
 	}
 }
