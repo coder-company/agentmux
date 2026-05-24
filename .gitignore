@@ -2,6 +2,9 @@
 agentmux
 dist/
 
+# Deploy infra
+install-worker/
+
 # IDE
 .idea/
 .vscode/

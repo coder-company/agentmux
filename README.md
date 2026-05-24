@@ -24,20 +24,27 @@ It does not replace tmux. It makes tmux faster to navigate.
 
 ## Install
 
+### One-liner (recommended)
+
+```bash
+curl -fsSL https://amux.coder.company/install.sh | sh
+```
+
+This auto-detects your OS/arch, downloads the latest release, and installs
+`agentmux` + `atmux` to `/usr/local/bin`.
+
+Install to a custom directory:
+
+```bash
+INSTALL_DIR=~/.local/bin curl -fsSL https://amux.coder.company/install.sh | sh
+```
+
 ### From source
 
 ```bash
-git clone https://github.com/youruser/agentmux
+git clone https://github.com/codercompany/agentmux
 cd agentmux
 make install
-```
-
-This installs both `agentmux` and `atmux` (a symlink) to `/usr/local/bin`.
-
-To install elsewhere:
-
-```bash
-make install PREFIX=~/.local
 ```
 
 ### Build only
@@ -48,7 +55,7 @@ make build        # produces ./agentmux binary
 
 ### Shell alias (alternative to symlink)
 
-If you prefer not to use `make install`, add an alias:
+If you prefer not to use the installer, add an alias:
 
 ```bash
 # bash / zsh (~/.bashrc or ~/.zshrc)
@@ -62,7 +69,7 @@ alias atmux agentmux
 
 | Dependency | Version |
 |-----------|---------|
-| Go        | 1.21+   |
+| Go        | 1.21+ (only for building from source) |
 | tmux      | 3.0+    |
 
 ---
