@@ -1,5 +1,39 @@
 # Changelog
 
+## v0.2.0 — 2025-05-24
+
+### TUI Overhaul
+
+- Header bar with brand, mode indicator, session count
+- Context-aware footer with keybinding hints
+- Refined dark theme with violet accents
+- Session list with relative timestamps and attached indicators
+- Preview pane with directory path, safe content truncation
+- Centered command palette overlay with fuzzy search
+- Centered workspace launcher overlay with command drilling
+- Help overlay with categorized keybinding reference (?)
+- Empty states with actionable hints throughout
+
+### Navigation
+
+- Vim-style movement: j/k, gg (top), G (bottom)
+- Kill moved to x (k reserved for vim up)
+- R for manual refresh
+- ? for help overlay
+- Palette includes attach-by-name and workspace launch actions
+
+### Workspace Launcher
+
+- Auto-names sessions as workspace-command (e.g., api-run)
+- Tab into commands sub-list
+
+### Alias Support
+
+- `make install` creates atmux symlink alongside agentmux
+- Shell alias docs for bash, zsh, fish
+
+---
+
 ## v0.1.0 — 2025-05-24
 
 Initial release.
