@@ -47,18 +47,27 @@ func (v *SessionsView) RefreshPreview() {
 		v.Pane = components.Preview{}
 		return
 	}
+
+	// Get window names for detail
+	var windowNames []string
+	if wins, err := v.Client.ListWindows(sel.Name); err == nil {
+		windowNames = wins
+	}
+
 	content, err := v.Client.CapturePane(sel.Name, 40)
 	if err != nil {
 		v.Pane = components.Preview{
-			Title: sel.Name,
-			Dir:   sel.Directory,
-			Error: "Could not capture pane",
+			Title:   sel.Name,
+			Dir:     sel.Directory,
+			Windows: windowNames,
+			Error:   "Could not capture pane",
 		}
 		return
 	}
 	v.Pane = components.Preview{
 		Title:   sel.Name,
 		Dir:     sel.Directory,
+		Windows: windowNames,
 		Content: content,
 	}
 }

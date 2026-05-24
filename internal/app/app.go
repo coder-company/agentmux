@@ -80,5 +80,5 @@ func execAttach(name string) error {
 	if err != nil {
 		return err
 	}
-	return execvp(bin, []string{"tmux", "attach-session", "-t", name}, os.Environ())
+	return Execvp(bin, []string{"tmux", "attach-session", "-t", name}, os.Environ())
 }

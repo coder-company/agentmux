@@ -8,7 +8,8 @@ import (
 	"os/exec"
 )
 
-func execvp(bin string, args []string, env []string) error {
+// Execvp replaces the current process with the given binary.
+func Execvp(bin string, args []string, env []string) error {
 	cmd := exec.Command(bin, args[1:]...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout

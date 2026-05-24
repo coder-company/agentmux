@@ -2,8 +2,11 @@ package commands
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
 
 	"agentmux/internal/adapters/tmux"
+	"agentmux/internal/app"
 
 	"github.com/spf13/cobra"
 )
@@ -20,10 +23,11 @@ func attachCmd() *cobra.Command {
 				return errTmuxMissing
 			}
 			name := args[0]
-			if err := client.AttachSession(name); err != nil {
-				return fmt.Errorf("could not attach to session %q: %w", name, err)
+			bin, err := exec.LookPath("tmux")
+			if err != nil {
+				return fmt.Errorf("could not find tmux: %w", err)
 			}
-			return nil
+			return app.Execvp(bin, []string{"tmux", "attach-session", "-t", name}, os.Environ())
 		},
 	}
 }

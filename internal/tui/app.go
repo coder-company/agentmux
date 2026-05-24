@@ -288,6 +288,10 @@ func (m Model) handlePaletteKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if sel.Do != nil {
 				sel.Do()
 			}
+			// Actions may request quit or attach
+			if m.quitting || m.attachName != "" {
+				return m, tea.Quit
+			}
 		}
 	case "backspace":
 		m.palette.Backspace()
@@ -350,6 +354,16 @@ func (m Model) View() string {
 		return m.launcher.Render()
 	case ViewHelp:
 		return m.help.Render()
+	}
+
+	// Set header mode based on state
+	switch {
+	case m.confirmKill:
+		m.header.Mode = "confirm kill"
+	case m.renaming:
+		m.header.Mode = "rename"
+	default:
+		m.header.Mode = ""
 	}
 
 	// Main layout: header + body + status + footer

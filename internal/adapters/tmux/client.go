@@ -89,17 +89,20 @@ func (c *Client) RenameSession(old, new string) error {
 	return err
 }
 
-// AttachSession attaches to a session (replaces the current process).
-func (c *Client) AttachSession(name string) error {
-	bin, err := exec.LookPath(c.bin)
+// ListWindows returns the window names for a session.
+func (c *Client) ListWindows(session string) ([]string, error) {
+	out, err := c.run("list-windows", "-t", session, "-F", "#{window_name}")
 	if err != nil {
-		return err
+		return nil, err
 	}
-	cmd := exec.Command(bin, "attach-session", "-t", name)
-	cmd.Stdin = nil
-	cmd.Stdout = nil
-	cmd.Stderr = nil
-	return cmd.Run()
+	var windows []string
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		line = strings.TrimSpace(line)
+		if line != "" {
+			windows = append(windows, line)
+		}
+	}
+	return windows, nil
 }
 
 // CapturePane captures visible pane output from the given session.

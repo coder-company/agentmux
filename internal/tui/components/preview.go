@@ -11,6 +11,7 @@ type Preview struct {
 	Content string
 	Title   string
 	Dir     string
+	Windows []string
 	Error   string
 }
 
@@ -20,7 +21,7 @@ func (p *Preview) Render(width, height int) string {
 		return ""
 	}
 
-	// Title line
+	// Title line with session name and directory
 	var titleLine string
 	if p.Title != "" {
 		titleLine = styles.PanelTitle.Render(p.Title)
@@ -31,23 +32,48 @@ func (p *Preview) Render(width, height int) string {
 		titleLine = styles.PanelTitleDim.Render("Preview")
 	}
 
+	// Window list
+	var windowLine string
+	if len(p.Windows) > 0 {
+		names := strings.Join(p.Windows, " │ ")
+		windowLine = styles.Subtle.Render("windows: " + names)
+	}
+
 	if p.Error != "" {
-		return titleLine + "\n\n" + styles.Warning.Render("⚠ ") + styles.Muted.Render(p.Error)
+		out := titleLine + "\n"
+		if windowLine != "" {
+			out += windowLine + "\n"
+		}
+		out += "\n" + styles.Warning.Render("⚠ ") + styles.Muted.Render(p.Error)
+		return out
 	}
 
 	if p.Content == "" {
-		hint := styles.Muted.Render("No pane output captured.")
-		return titleLine + "\n\n" + hint
+		out := titleLine + "\n"
+		if windowLine != "" {
+			out += windowLine + "\n"
+		}
+		out += "\n" + styles.Muted.Render("No pane output captured.")
+		return out
 	}
 
 	// Trim trailing blank lines
 	content := strings.TrimRight(p.Content, "\n \t")
 	if content == "" {
-		return titleLine + "\n\n" + styles.Muted.Render("(empty)")
+		out := titleLine + "\n"
+		if windowLine != "" {
+			out += windowLine + "\n"
+		}
+		out += "\n" + styles.Muted.Render("(empty)")
+		return out
 	}
 
 	lines := strings.Split(content, "\n")
-	maxLines := height - 2
+	headerLines := 2 // title + blank
+	if windowLine != "" {
+		headerLines = 3
+	}
+	maxLines := height - headerLines
 	if maxLines < 1 {
 		maxLines = 1
 	}
@@ -63,5 +89,10 @@ func (p *Preview) Render(width, height int) string {
 		}
 	}
 
-	return titleLine + "\n" + strings.Join(lines, "\n")
+	out := titleLine + "\n"
+	if windowLine != "" {
+		out += windowLine + "\n"
+	}
+	out += strings.Join(lines, "\n")
+	return out
 }
