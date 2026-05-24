@@ -30,16 +30,25 @@ func (h *Header) Render() string {
 		right = styles.Muted.Render("["+h.Mode+"]") + "  " + right
 	}
 
-	gap := h.Width - lipgloss.Width(brand) - lipgloss.Width(right) - 2
+	// If terminal is too narrow, drop the right side
+	brandW := lipgloss.Width(brand)
+	rightW := lipgloss.Width(right)
+	gap := h.Width - brandW - rightW - 2
+	var row string
 	if gap < 1 {
-		gap = 1
+		// Just show brand
+		row = brand
+	} else {
+		row = brand + lipgloss.NewStyle().Width(gap).Render("") + right
 	}
 
-	row := brand + lipgloss.NewStyle().Width(gap).Render("") + right
 	header := styles.HeaderStyle.Width(h.Width).Render(row)
-	rule := styles.Separator.Width(h.Width).Render(repeatChar('─', h.Width))
-
-	return header + "\n" + rule
+	ruleW := h.Width
+	if ruleW > 0 {
+		rule := styles.Separator.Render(repeatChar('─', ruleW))
+		return header + "\n" + rule
+	}
+	return header
 }
 
 func repeatChar(ch rune, n int) string {
