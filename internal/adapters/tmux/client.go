@@ -48,12 +48,27 @@ func (c *Client) Available() bool {
 	return err == nil
 }
 
+// isNoServer reports whether the error/output indicates that no tmux server
+// is currently running. tmux phrases this differently across versions:
+//   - "no server running on ..."
+//   - "error connecting to /tmp/tmux-<uid>/default (No such file or directory)"
+func isNoServer(err error, out []byte) bool {
+	msg := ""
+	if err != nil {
+		msg = err.Error()
+	}
+	outStr := string(out)
+	return strings.Contains(msg, "no server running") ||
+		strings.Contains(outStr, "no server running") ||
+		strings.Contains(msg, "error connecting to") ||
+		strings.Contains(outStr, "error connecting to")
+}
+
 // ListSessions returns all tmux sessions.
 func (c *Client) ListSessions() ([]core.Session, error) {
 	out, err := c.run("list-sessions", "-F", sessionFormat)
 	if err != nil {
-		if strings.Contains(err.Error(), "no server running") ||
-			strings.Contains(string(out), "no server running") {
+		if isNoServer(err, out) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("list-sessions: %w", err)
