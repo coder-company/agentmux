@@ -8,9 +8,14 @@ import (
 	"agentmux/internal/core"
 )
 
-// fieldSep is the Unit Separator (ASCII 31) used as delimiter in tmux format strings.
-// Unlike '|', it cannot appear in file paths or session names.
-const fieldSep = "\x1f"
+// fieldSep is the delimiter used in tmux format strings.
+//
+// We use a horizontal TAB (ASCII 9): tmux 3.4+ escapes any control byte under
+// 0x20 (except TAB) into a literal 4-character "\NNN" sequence in format output,
+// so the previously-used Unit Separator (0x1f) was rendered as the bytes "\037"
+// rather than the actual byte 0x1f, breaking the parser. TABs cannot appear in
+// tmux session names and are virtually never present in file paths.
+const fieldSep = "\t"
 
 // Format string for tmux list-sessions -F
 var sessionFormat = "#{session_name}" + fieldSep + "#{session_windows}" + fieldSep + "#{session_created}" + fieldSep + "#{session_attached}" + fieldSep + "#{pane_current_path}"
