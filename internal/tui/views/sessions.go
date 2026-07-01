@@ -1,6 +1,9 @@
 package views
 
 import (
+	"fmt"
+	"strings"
+
 	"agentmux/internal/adapters/tmux"
 	"agentmux/internal/tui/components"
 	"agentmux/internal/tui/styles"
@@ -73,42 +76,89 @@ func (v *SessionsView) RefreshPreview() {
 
 // Render returns the full two-panel sessions view.
 func (v *SessionsView) Render(bodyHeight int) string {
-	if v.Width < 40 || bodyHeight < 5 {
+	if v.Width < 50 || bodyHeight < 7 {
 		return styles.Muted.Render(" Terminal too small. Resize to continue.")
 	}
 
-	// Panel sizing: 35% left, rest right
-	leftOuter := v.Width * 35 / 100
-	if leftOuter < 28 {
-		leftOuter = 28
+	if v.Width < 88 {
+		return v.renderCompact(bodyHeight)
 	}
-	if leftOuter > 50 {
-		leftOuter = 50
+
+	leftOuter := v.Width * 36 / 100
+	if leftOuter < 32 {
+		leftOuter = 32
 	}
-	rightOuter := v.Width - leftOuter - 1 // 1 char gap between panels
+	if leftOuter > 48 {
+		leftOuter = 48
+	}
+	rightOuter := v.Width - leftOuter - 1
 
 	panelH := bodyHeight
-	innerH := panelH - 2 // top + bottom border
+	innerH := panelH - 2
 	if innerH < 1 {
 		innerH = 1
 	}
 
-	// Left panel: sessions
-	leftInner := leftOuter - 4 // border(2) + padding(2)
-	listContent := v.List.Render(leftInner, innerH)
+	leftInner := leftOuter - 2
+	leftHeader := panelHeader("sessions", sessionCountLabel(len(v.List.Sessions)), leftInner)
+	listContent := v.List.Render(leftInner, innerH-2)
+	leftContent := leftHeader + "\n" + styles.Subtle.Render(rule(leftInner)) + "\n" + listContent
 	left := styles.PanelBorderActive.
 		Width(leftOuter).
 		Height(panelH).
-		Render(listContent)
+		Render(leftContent)
 
-	// Right panel: preview
-	rightInner := rightOuter - 4
-	previewContent := v.Pane.Render(rightInner, innerH)
+	rightInner := rightOuter - 2
+	selected := "no selection"
+	if sel := v.List.Selected(); sel != nil {
+		selected = "tail 40 lines"
+	}
+	rightHeader := panelHeader("preview", selected, rightInner)
+	previewContent := v.Pane.Render(rightInner, innerH-2)
+	rightContent := rightHeader + "\n" + styles.Subtle.Render(rule(rightInner)) + "\n" + previewContent
 	right := styles.PanelBorder.
 		Width(rightOuter).
 		Height(panelH).
-		Render(previewContent)
+		Render(rightContent)
 
 	gap := lipgloss.NewStyle().Width(1).Render(" ")
 	return lipgloss.JoinHorizontal(lipgloss.Top, left, gap, right)
+}
+
+func (v *SessionsView) renderCompact(bodyHeight int) string {
+	panelH := bodyHeight
+	innerW := v.Width - 2
+	innerH := panelH - 2
+	header := panelHeader("sessions", "preview hidden on narrow terminals", innerW)
+	listContent := v.List.Render(innerW, innerH-2)
+	content := header + "\n" + styles.Subtle.Render(rule(innerW)) + "\n" + listContent
+
+	return styles.PanelBorderActive.
+		Width(v.Width).
+		Height(panelH).
+		Render(content)
+}
+
+func panelHeader(title, meta string, width int) string {
+	title = styles.PanelTitle.Render(title)
+	meta = styles.PanelMeta.Render(styles.Truncate(meta, width/2))
+	gap := width - lipgloss.Width(title) - lipgloss.Width(meta)
+	if gap < 1 {
+		return styles.Truncate(title, width)
+	}
+	return title + lipgloss.NewStyle().Width(gap).Render("") + meta
+}
+
+func sessionCountLabel(n int) string {
+	if n == 1 {
+		return "1 session"
+	}
+	return fmt.Sprintf("%d sessions", n)
+}
+
+func rule(width int) string {
+	if width <= 0 {
+		return ""
+	}
+	return strings.Repeat("─", width)
 }

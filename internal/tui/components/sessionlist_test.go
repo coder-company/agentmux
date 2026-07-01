@@ -1,10 +1,13 @@
 package components
 
 import (
+	"strings"
 	"testing"
 	"time"
 
 	"agentmux/internal/core"
+
+	"github.com/charmbracelet/lipgloss"
 )
 
 func TestSessionListNavigation(t *testing.T) {
@@ -103,6 +106,22 @@ func TestRelativeTime(t *testing.T) {
 		if got != tt.want {
 			t.Errorf("relativeTime(%v ago): got %q, want %q",
 				time.Since(tt.t), got, tt.want)
+		}
+	}
+}
+
+func TestSessionListRenderFitsWidth(t *testing.T) {
+	sl := &SessionList{
+		Sessions: []core.Session{
+			{Name: "a-very-long-session-name-that-would-overflow", Windows: 12, Attached: true},
+			{Name: "second", Windows: 1},
+		},
+	}
+
+	out := sl.Render(24, 4)
+	for _, line := range strings.Split(out, "\n") {
+		if width := lipgloss.Width(line); width > 24 {
+			t.Fatalf("line width = %d, want <= 24: %q", width, line)
 		}
 	}
 }

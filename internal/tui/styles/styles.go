@@ -1,79 +1,91 @@
 package styles
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"strings"
+
+	"github.com/charmbracelet/lipgloss"
+)
 
 // Colors
 var (
-	Purple    = lipgloss.Color("#A78BFA")
-	PurpleDim = lipgloss.Color("#7C3AED")
-	Cyan      = lipgloss.Color("#67E8F9")
-	Green     = lipgloss.Color("#6EE7B7")
-	Red       = lipgloss.Color("#FCA5A5")
-	Yellow    = lipgloss.Color("#FDE68A")
-	White     = lipgloss.Color("#F9FAFB")
-	Gray100   = lipgloss.Color("#F3F4F6")
-	Gray300   = lipgloss.Color("#D1D5DB")
-	Gray400   = lipgloss.Color("#9CA3AF")
-	Gray500   = lipgloss.Color("#6B7280")
-	Gray600   = lipgloss.Color("#4B5563")
-	Gray700   = lipgloss.Color("#374151")
-	Gray800   = lipgloss.Color("#1F2937")
-	Gray900   = lipgloss.Color("#111827")
+	Amber    = lipgloss.Color("#D6A657")
+	AmberDim = lipgloss.Color("#8A6A2F")
+	Teal     = lipgloss.Color("#6EAFA0")
+	Green    = lipgloss.Color("#8FD694")
+	Red      = lipgloss.Color("#E06C75")
+	Yellow   = lipgloss.Color("#E5C07B")
+	White    = lipgloss.Color("#E6EDF3")
+	Gray100  = lipgloss.Color("#D8DEE9")
+	Gray300  = lipgloss.Color("#B6C2CF")
+	Gray400  = lipgloss.Color("#8C98A7")
+	Gray500  = lipgloss.Color("#6F7B89")
+	Gray600  = lipgloss.Color("#505A66")
+	Gray700  = lipgloss.Color("#343D49")
+	Gray800  = lipgloss.Color("#202734")
+	Gray850  = lipgloss.Color("#181E27")
+	Gray900  = lipgloss.Color("#11161D")
 )
 
 // Layout
 var (
 	HeaderStyle = lipgloss.NewStyle().
-			Foreground(Gray400).
-			Padding(0, 1)
+			Foreground(Gray300).
+			Background(Gray900)
 
 	HeaderBrand = lipgloss.NewStyle().
-			Foreground(Purple).
+			Foreground(Amber).
 			Bold(true)
 
+	HeaderMode = lipgloss.NewStyle().
+			Foreground(Gray900).
+			Background(Amber).
+			Bold(true).
+			Padding(0, 1)
+
 	HeaderDim = lipgloss.NewStyle().
-			Foreground(Gray600)
+			Foreground(Gray500)
 
 	Separator = lipgloss.NewStyle().
-			Foreground(Gray700)
+			Foreground(Gray800)
 
 	PanelBorder = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
+			Border(lipgloss.NormalBorder()).
 			BorderForeground(Gray700)
 
 	PanelBorderActive = lipgloss.NewStyle().
-				Border(lipgloss.RoundedBorder()).
-				BorderForeground(Purple)
+				Border(lipgloss.NormalBorder()).
+				BorderForeground(AmberDim)
 
 	PanelTitle = lipgloss.NewStyle().
-			Foreground(Gray400).
+			Foreground(Amber).
 			Bold(true)
 
+	PanelMeta = lipgloss.NewStyle().
+			Foreground(Gray500)
+
 	FooterStyle = lipgloss.NewStyle().
-			Foreground(Gray600).
-			Padding(0, 1)
+			Foreground(Gray500).
+			Background(Gray900)
 
 	FooterKey = lipgloss.NewStyle().
-			Foreground(Gray300).
+			Foreground(Amber).
 			Bold(true)
 
 	FooterDesc = lipgloss.NewStyle().
-			Foreground(Gray600)
+			Foreground(Gray500)
 )
 
 // Session list
 var (
 	// Selected row — full-width inverse
 	ListSelected = lipgloss.NewStyle().
-			Background(PurpleDim).
+			Background(Gray800).
 			Foreground(White).
-			Bold(true).
-			Padding(0, 1)
+			Bold(true)
 
 	// Normal row
 	ListNormal = lipgloss.NewStyle().
-			Foreground(Gray300).
-			Padding(0, 1)
+			Foreground(Gray300)
 
 	// Metadata on normal rows
 	ListMeta = lipgloss.NewStyle().
@@ -81,26 +93,26 @@ var (
 
 	// Attached dot
 	ListDot = lipgloss.NewStyle().
-		Foreground(Green).
+		Foreground(Teal).
 		Bold(true)
 
 	// Cursor arrow on selected
 	ListCursor = lipgloss.NewStyle().
-			Foreground(Purple).
+			Foreground(Amber).
 			Bold(true)
 )
 
 // Preview
 var (
 	PreviewTitle = lipgloss.NewStyle().
-			Foreground(Purple).
+			Foreground(White).
 			Bold(true)
 
 	PreviewPath = lipgloss.NewStyle().
 			Foreground(Gray500)
 
 	PreviewContent = lipgloss.NewStyle().
-			Foreground(Gray400)
+			Foreground(Gray300)
 
 	PreviewDim = lipgloss.NewStyle().
 			Foreground(Gray600)
@@ -109,29 +121,27 @@ var (
 // Overlay
 var (
 	Overlay = lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(Purple).
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(AmberDim).
 		Padding(1, 2)
 
 	OverlayTitle = lipgloss.NewStyle().
-			Foreground(Purple).
+			Foreground(Amber).
 			Bold(true)
 
 	OverlaySelected = lipgloss.NewStyle().
-			Background(PurpleDim).
+			Background(Gray800).
 			Foreground(White).
-			Bold(true).
-			Padding(0, 1)
+			Bold(true)
 
 	OverlayNormal = lipgloss.NewStyle().
-			Foreground(Gray300).
-			Padding(0, 1)
+			Foreground(Gray300)
 
 	OverlayDim = lipgloss.NewStyle().
 			Foreground(Gray500)
 
 	OverlayPrompt = lipgloss.NewStyle().
-			Foreground(Purple).
+			Foreground(Amber).
 			Bold(true)
 
 	OverlayInput = lipgloss.NewStyle().
@@ -142,15 +152,28 @@ var (
 var (
 	StatusOk = lipgloss.NewStyle().
 			Foreground(Green).
-			Padding(0, 1)
+			Background(Gray900)
 
 	StatusErr = lipgloss.NewStyle().
 			Foreground(Red).
-			Padding(0, 1)
+			Background(Gray900)
 
 	StatusInfo = lipgloss.NewStyle().
 			Foreground(Gray400).
-			Padding(0, 1)
+			Background(Gray900)
+
+	StatusWarn = lipgloss.NewStyle().
+			Foreground(Yellow).
+			Background(Gray900)
+
+	ErrorText = lipgloss.NewStyle().
+			Foreground(Red)
+
+	WarnText = lipgloss.NewStyle().
+			Foreground(Yellow)
+
+	GoodText = lipgloss.NewStyle().
+			Foreground(Green)
 
 	Muted = lipgloss.NewStyle().
 		Foreground(Gray500)
@@ -158,4 +181,50 @@ var (
 	Bold = lipgloss.NewStyle().
 		Foreground(White).
 		Bold(true)
+
+	Subtle = lipgloss.NewStyle().
+		Foreground(Gray600)
 )
+
+// Truncate returns s constrained to width terminal cells.
+func Truncate(s string, width int) string {
+	if width <= 0 {
+		return ""
+	}
+	if lipgloss.Width(s) <= width {
+		return s
+	}
+
+	ellipsis := "…"
+	ellipsisW := lipgloss.Width(ellipsis)
+	if width <= ellipsisW {
+		return ellipsis
+	}
+
+	limit := width - ellipsisW
+	var b strings.Builder
+	used := 0
+	for _, r := range s {
+		part := string(r)
+		partW := lipgloss.Width(part)
+		if used+partW > limit {
+			break
+		}
+		b.WriteRune(r)
+		used += partW
+	}
+	return b.String() + ellipsis
+}
+
+// PadRight truncates s if necessary and pads it to width terminal cells.
+func PadRight(s string, width int) string {
+	if width <= 0 {
+		return ""
+	}
+	s = Truncate(s, width)
+	pad := width - lipgloss.Width(s)
+	if pad <= 0 {
+		return s
+	}
+	return s + strings.Repeat(" ", pad)
+}

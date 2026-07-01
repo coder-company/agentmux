@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 
 	"agentmux/internal/adapters/tmux"
 	"agentmux/internal/core"
@@ -376,7 +377,7 @@ func (m Model) View() string {
 	statusStr := ""
 	statusH := 0
 	if m.sessions.Status != "" {
-		statusStr = styles.StatusInfo.Width(m.width).Render(m.sessions.Status)
+		statusStr = statusStyle(m.sessions.Status).Width(m.width).Render(m.sessions.Status)
 		statusH = 1
 	}
 
@@ -394,6 +395,19 @@ func (m Model) View() string {
 	parts = append(parts, footerStr)
 
 	return lipgloss.JoinVertical(lipgloss.Left, parts...)
+}
+
+func statusStyle(status string) lipgloss.Style {
+	switch {
+	case strings.HasPrefix(status, "✓"):
+		return styles.StatusOk
+	case strings.HasPrefix(status, "✗"):
+		return styles.StatusErr
+	case strings.HasPrefix(status, "Kill "):
+		return styles.StatusWarn
+	default:
+		return styles.StatusInfo
+	}
 }
 
 // doRefresh refreshes sessions and updates header count.

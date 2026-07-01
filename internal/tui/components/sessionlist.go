@@ -2,10 +2,13 @@ package components
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"agentmux/internal/core"
 	"agentmux/internal/tui/styles"
+
+	"github.com/charmbracelet/lipgloss"
 )
 
 // SessionList renders a list of sessions with a cursor.
@@ -56,43 +59,111 @@ func (sl *SessionList) MoveBottom() {
 
 // Render returns the rendered list.
 func (sl *SessionList) Render(width, height int) string {
-	if len(sl.Sessions) == 0 {
-		out := "\n"
-		out += styles.Muted.Render("  No tmux sessions running.") + "\n\n"
-		out += styles.HeaderDim.Render("  n") + styles.Muted.Render("  new session") + "\n"
-		out += styles.HeaderDim.Render("  p") + styles.Muted.Render("  launch workspace") + "\n"
-		return out
+	if width <= 0 || height <= 0 {
+		return ""
 	}
 
-	var out string
+	if len(sl.Sessions) == 0 {
+		return renderEmptySessions(width, height)
+	}
+
+	var lines []string
 	for i, s := range sl.Sessions {
-		if i >= height {
+		if len(lines) >= height {
 			break
 		}
+		lines = append(lines, sl.renderRow(i, s, width))
+	}
 
-		// Build the line content
-		dot := "  "
-		if s.Attached {
-			dot = styles.ListDot.Render("● ")
+	if len(sl.Sessions) > height {
+		more := fmt.Sprintf("  %d more below", len(sl.Sessions)-height)
+		lines[height-1] = styles.PanelMeta.Render(styles.Truncate(more, width))
+	}
+
+	return strings.Join(lines, "\n")
+}
+
+func (sl *SessionList) renderRow(i int, s core.Session, width int) string {
+	marker := " "
+	if s.Attached {
+		marker = "●"
+	}
+
+	meta := fmt.Sprintf("%dw", s.Windows)
+	if !s.Created.IsZero() {
+		meta += " " + relativeTime(s.Created)
+	}
+
+	cursor := "  "
+	if i == sl.Cursor {
+		cursor = "› "
+	}
+
+	prefix := cursor + marker + " "
+	prefixW := lipgloss.Width(prefix)
+	metaW := lipgloss.Width(meta)
+	nameW := width - prefixW - metaW - 2
+	if nameW < 8 {
+		nameW = width - prefixW
+		meta = ""
+		metaW = 0
+	}
+	if nameW < 1 {
+		nameW = 1
+	}
+
+	name := styles.Truncate(s.Name, nameW)
+	gap := width - prefixW - lipgloss.Width(name) - metaW
+	if gap < 1 {
+		gap = 1
+	}
+
+	plain := styles.Truncate(prefix+name+strings.Repeat(" ", gap)+meta, width)
+	if i == sl.Cursor {
+		return styles.ListSelected.Width(width).Render(plain)
+	}
+
+	dot := " "
+	if s.Attached {
+		dot = styles.ListDot.Render("●")
+	}
+
+	line := "  " + dot + " " + styles.ListNormal.Render(name)
+	if meta != "" {
+		normalGap := width - lipgloss.Width(line) - metaW
+		if normalGap < 1 {
+			normalGap = 1
 		}
+		line += strings.Repeat(" ", normalGap) + styles.ListMeta.Render(meta)
+	}
+	return line
+}
 
-		name := s.Name
-		meta := fmt.Sprintf("  %dw", s.Windows)
-		if !s.Created.IsZero() {
-			meta += " " + relativeTime(s.Created)
-		}
+func renderEmptySessions(width, height int) string {
+	rows := []string{
+		"",
+		styles.Bold.Render("  No tmux sessions"),
+		styles.Muted.Render("  Create a detached session or launch a configured workspace."),
+		"",
+		actionHint("n", "new session"),
+		actionHint("p", "workspace launcher"),
+		actionHint("/", "command palette"),
+	}
 
-		if i == sl.Cursor {
-			// Selected: highlighted full row with arrow
-			line := "▸ " + dot + name + styles.ListMeta.Render(meta)
-			out += styles.ListSelected.Width(width).Render(line) + "\n"
-		} else {
-			// Normal row
-			line := "  " + dot + styles.ListNormal.Render(name) + styles.ListMeta.Render(meta)
-			out += line + "\n"
+	if height < len(rows) {
+		rows = rows[:height]
+	}
+
+	for i, row := range rows {
+		if lipgloss.Width(row) > width {
+			rows[i] = styles.Truncate(row, width)
 		}
 	}
-	return out
+	return strings.Join(rows, "\n")
+}
+
+func actionHint(key, desc string) string {
+	return "  " + styles.FooterKey.Render(key) + "  " + styles.Muted.Render(desc)
 }
 
 func relativeTime(t time.Time) string {

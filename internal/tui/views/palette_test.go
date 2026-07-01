@@ -1,6 +1,11 @@
 package views
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+
+	"github.com/charmbracelet/lipgloss"
+)
 
 func TestFuzzyContains(t *testing.T) {
 	tests := []struct {
@@ -134,5 +139,32 @@ func TestPaletteTypeAndBackspace(t *testing.T) {
 	p.Backspace() // should not panic
 	if p.Query != "" {
 		t.Errorf("extra backspace: got %q, want ''", p.Query)
+	}
+}
+
+func TestPaletteVisibleActionsKeepsCursorInWindow(t *testing.T) {
+	var actions []Action
+	for i := 0; i < 20; i++ {
+		actions = append(actions, Action{Name: fmt.Sprintf("Action %02d", i)})
+	}
+	p := NewPalette(actions)
+	p.Cursor = 14
+
+	start, visible := p.visibleActions(5)
+	if start > p.Cursor || start+len(visible) <= p.Cursor {
+		t.Fatalf("cursor %d not visible in window %d-%d", p.Cursor, start, start+len(visible)-1)
+	}
+}
+
+func TestPaletteRenderFitsScreenWidth(t *testing.T) {
+	p := NewPalette([]Action{
+		{Name: "Long action name that should fit", Desc: "Long action description that should also be constrained", Key: "n"},
+	})
+	p.Width = 60
+	p.Height = 20
+
+	out := p.Render()
+	if width := lipgloss.Width(out); width > 60 {
+		t.Fatalf("rendered width = %d, want <= 60", width)
 	}
 }

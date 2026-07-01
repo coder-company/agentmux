@@ -14,23 +14,31 @@ type HelpOverlay struct {
 
 // Render returns the help overlay.
 func (h *HelpOverlay) Render() string {
-	w := h.Width * 45 / 100
-	if w < 38 {
-		w = 38
+	w := h.Width * 52 / 100
+	if w < 44 {
+		w = 44
 	}
-	if w > 56 {
-		w = 56
+	if w > 68 {
+		w = 68
 	}
+	if h.Width > 0 && w > h.Width-4 {
+		w = h.Width - 4
+	}
+	if w < 26 {
+		w = 26
+	}
+	innerW := w - 6
 
 	title := styles.OverlayTitle.Render("Keybindings")
 
-	keyStyle := styles.FooterKey.Width(12)
+	keyStyle := styles.FooterKey.Width(11)
 	descStyle := styles.Muted
 
 	section := func(name string, rows [][2]string) string {
-		out := "\n" + styles.Bold.Render(name) + "\n"
+		out := "\n" + styles.PanelMeta.Render(name) + "\n"
 		for _, r := range rows {
-			out += keyStyle.Render(r[0]) + descStyle.Render(r[1]) + "\n"
+			line := keyStyle.Render(r[0]) + descStyle.Render(styles.Truncate(r[1], innerW-11))
+			out += line + "\n"
 		}
 		return out
 	}
@@ -59,6 +67,7 @@ func (h *HelpOverlay) Render() string {
 		{"q", "exit"},
 		{"ctrl+c", "exit"},
 	})
+	content += "\n" + styles.HeaderDim.Render(styles.Truncate("esc, ?, or q closes this panel", innerW))
 
 	box := styles.Overlay.Width(w).Render(content)
 	return lipgloss.Place(h.Width, h.Height,

@@ -1,6 +1,7 @@
 package views
 
 import (
+	"fmt"
 	"strings"
 
 	"agentmux/internal/tui/styles"
@@ -117,51 +118,148 @@ func (p *PaletteView) MoveDown() {
 
 // Render returns the palette as a centered overlay.
 func (p *PaletteView) Render() string {
-	w := p.Width * 50 / 100
-	if w < 44 {
-		w = 44
+	w := p.Width * 60 / 100
+	if w < 48 {
+		w = 48
 	}
-	if w > 72 {
-		w = 72
+	if w > 84 {
+		w = 84
+	}
+	if p.Width > 0 && w > p.Width-4 {
+		w = p.Width - 4
+	}
+	if w < 24 {
+		w = 24
 	}
 
-	maxItems := p.Height - 10
+	innerW := w - 6
+	if innerW < 12 {
+		innerW = 12
+	}
+
+	maxItems := p.Height - 11
 	if maxItems < 3 {
 		maxItems = 3
 	}
-
-	title := styles.OverlayTitle.Render("Commands")
-	prompt := styles.OverlayPrompt.Render("❯ ") +
-		styles.OverlayInput.Render(p.Query) +
-		styles.OverlayPrompt.Render("│")
-
-	var items string
-	visible := p.Filtered
-	if len(visible) > maxItems {
-		visible = visible[:maxItems]
+	if maxItems > 10 {
+		maxItems = 10
 	}
 
-	for i, a := range visible {
-		name := a.Name
-		if a.Key != "" {
-			name += "  " + styles.OverlayDim.Render(a.Key)
-		}
+	title := styles.OverlayTitle.Render("Commands")
+	count := styles.OverlayDim.Render(resultCount(len(p.Filtered), len(p.Actions)))
+	titleRow := title
+	gap := innerW - lipgloss.Width(title) - lipgloss.Width(count)
+	if gap > 0 {
+		titleRow = title + lipgloss.NewStyle().Width(gap).Render("") + count
+	}
 
-		if i == p.Cursor {
-			items += styles.OverlaySelected.Width(w-6).Render(name) + "\n"
-		} else {
-			items += styles.OverlayNormal.Render(name) + "\n"
-		}
+	query := p.Query
+	if query == "" {
+		query = styles.OverlayDim.Render("type to filter")
+	} else {
+		query = styles.OverlayInput.Render(styles.Truncate(query, innerW-4))
+	}
+	prompt := styles.OverlayPrompt.Render("› ") + query + styles.OverlayPrompt.Render("█")
+
+	var items string
+	start, visible := p.visibleActions(maxItems)
+
+	for i, a := range visible {
+		selected := start+i == p.Cursor
+		items += renderActionRow(a, innerW, selected) + "\n"
 	}
 
 	if len(p.Filtered) == 0 {
-		items = styles.Muted.Render("  no matches")
+		items = styles.Muted.Render(styles.Truncate("  No commands match \""+p.Query+"\"", innerW))
 	}
 
-	footer := styles.HeaderDim.Render("↑↓ move · ⏎ select · esc close")
-	content := title + "\n" + prompt + "\n\n" + items + "\n" + footer
+	footer := styles.HeaderDim.Render(styles.Truncate("type to filter · ↑↓ move · enter run · esc close", innerW))
+	content := titleRow + "\n" + prompt + "\n\n" + items + "\n" + footer
 	box := styles.Overlay.Width(w).Render(content)
 
 	return lipgloss.Place(p.Width, p.Height,
 		lipgloss.Center, lipgloss.Center, box)
+}
+
+func (p *PaletteView) visibleActions(maxItems int) (int, []Action) {
+	if len(p.Filtered) <= maxItems {
+		return 0, p.Filtered
+	}
+
+	start := p.Cursor - maxItems/2
+	if start < 0 {
+		start = 0
+	}
+	if start+maxItems > len(p.Filtered) {
+		start = len(p.Filtered) - maxItems
+	}
+	return start, p.Filtered[start : start+maxItems]
+}
+
+func renderActionRow(a Action, width int, selected bool) string {
+	key := ""
+	if a.Key != "" {
+		key = "[" + a.Key + "]"
+	}
+
+	keyW := lipgloss.Width(key)
+	nameW := width
+	descW := 0
+	if width >= 54 && a.Desc != "" {
+		nameW = 24
+		descW = width - nameW - keyW - 4
+		if descW < 12 {
+			descW = 0
+			nameW = width - keyW - 2
+		}
+	} else if keyW > 0 {
+		nameW = width - keyW - 2
+	}
+	if nameW < 1 {
+		nameW = 1
+	}
+
+	name := styles.PadRight(a.Name, nameW)
+	line := name
+	if descW > 0 {
+		line += "  " + styles.PadRight(a.Desc, descW)
+	}
+	if key != "" {
+		gap := width - lipgloss.Width(line) - keyW
+		if gap < 1 {
+			gap = 1
+		}
+		line += strings.Repeat(" ", gap) + key
+	}
+	line = styles.Truncate(line, width)
+
+	if selected {
+		return styles.OverlaySelected.Width(width).Render(line)
+	}
+
+	if descW > 0 {
+		namePart := styles.OverlayNormal.Render(styles.PadRight(a.Name, nameW))
+		descPart := styles.OverlayDim.Render(styles.PadRight(a.Desc, descW))
+		line = namePart + "  " + descPart
+		if key != "" {
+			gap := width - lipgloss.Width(line) - keyW
+			if gap < 1 {
+				gap = 1
+			}
+			line += strings.Repeat(" ", gap) + styles.OverlayDim.Render(key)
+		}
+		return line
+	}
+
+	return styles.OverlayNormal.Render(line)
+}
+
+func resultCount(filtered, total int) string {
+	if total == 0 {
+		return "no actions"
+	}
+	if filtered == total {
+		return fmt.Sprintf("%d actions", total)
+	}
+	return fmt.Sprintf("%d of %d", filtered, total)
 }

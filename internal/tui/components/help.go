@@ -14,6 +14,10 @@ type HelpBinding struct {
 
 // RenderFooter renders a keybinding footer that fits in the given width.
 func RenderFooter(bindings []HelpBinding, width int) string {
+	if width <= 0 {
+		return ""
+	}
+
 	sep := styles.HeaderDim.Render(" · ")
 
 	var row string
@@ -30,6 +34,9 @@ func RenderFooter(bindings []HelpBinding, width int) string {
 		}
 	}
 
+	if lipgloss.Width(row) > width {
+		row = styles.FooterDesc.Render(styles.Truncate("? help", width))
+	}
 	return styles.FooterStyle.Width(width).Render(row)
 }
 
