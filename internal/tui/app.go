@@ -44,6 +44,8 @@ type Model struct {
 	confirmName  string
 	renaming     bool
 	renameBuffer string
+	filtering    bool
+	filterBuffer string
 	prevG        bool // for gg binding
 }
 
@@ -93,7 +95,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case RefreshMsg:
 		m.sessions.Refresh()
-		m.header.SessionCount = len(m.sessions.List.Sessions)
+		m.header.SessionCount = m.sessions.TotalCount()
 		m.rebuildPalette()
 
 	case tea.KeyMsg:
@@ -111,6 +113,11 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Rename mode
 	if m.renaming {
 		return m.handleRenameKey(msg)
+	}
+
+	// Filter mode
+	if m.filtering {
+		return m.handleFilterKey(msg)
 	}
 
 	// Help overlay
@@ -179,7 +186,7 @@ func (m Model) handleSessionsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 	case "n":
-		name := generateSessionName(m.sessions.List.Sessions)
+		name := generateSessionName(m.sessions.AllSessions)
 		if err := m.client.NewSession(name, ""); err == nil {
 			m.sessions.Status = "✓ Created " + name
 			m.doRefresh()
@@ -206,6 +213,25 @@ func (m Model) handleSessionsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.sessions.Status = "✓ Refreshed"
 
 	case "/":
+		m.filtering = true
+		m.filterBuffer = m.sessions.Filter
+		m.setFilterStatus()
+
+	case "esc":
+		if m.sessions.Filter != "" {
+			m.sessions.ClearFilter()
+			m.sessions.Status = "Filter cleared"
+		}
+
+	case "s":
+		m.sessions.CycleSort()
+		m.sessions.Status = "Sort: " + m.sessions.SortLabel()
+
+	case "tab":
+		m.sessions.CycleLayout()
+		m.sessions.Status = "Layout: " + m.sessions.LayoutLabel()
+
+	case ":", "ctrl+p":
 		m.rebuildPalette()
 		m.view = ViewPalette
 		m.palette.SetQuery("")
@@ -217,6 +243,42 @@ func (m Model) handleSessionsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.view = ViewHelp
 	}
 
+	return m, nil
+}
+
+func (m Model) handleFilterKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "enter":
+		m.filtering = false
+		m.filterBuffer = ""
+		m.setFilterStatus()
+	case "esc":
+		m.filtering = false
+		m.filterBuffer = ""
+		m.sessions.ClearFilter()
+		m.sessions.Status = "Filter cleared"
+	case "ctrl+c":
+		m.filtering = false
+		m.filterBuffer = ""
+		m.sessions.Status = ""
+	case "ctrl+u":
+		m.filterBuffer = ""
+		m.sessions.SetFilter("")
+		m.setFilterStatus()
+	case "backspace":
+		if len(m.filterBuffer) > 0 {
+			m.filterBuffer = m.filterBuffer[:len(m.filterBuffer)-1]
+			m.sessions.SetFilter(m.filterBuffer)
+		}
+		m.setFilterStatus()
+	default:
+		ch := msg.String()
+		if len(ch) == 1 {
+			m.filterBuffer += ch
+			m.sessions.SetFilter(m.filterBuffer)
+			m.setFilterStatus()
+		}
+	}
 	return m, nil
 }
 
@@ -363,6 +425,10 @@ func (m Model) View() string {
 		m.header.Mode = "confirm kill"
 	case m.renaming:
 		m.header.Mode = "rename"
+	case m.filtering:
+		m.header.Mode = "filter"
+	case m.sessions.Filter != "":
+		m.header.Mode = "filtered"
 	default:
 		m.header.Mode = ""
 	}
@@ -371,7 +437,7 @@ func (m Model) View() string {
 	headerStr := m.header.Render()
 	headerH := lipgloss.Height(headerStr)
 
-	footerStr := components.SessionsFooter(m.width)
+	footerStr := components.SessionsFooter(m.width, m.sessions.Filter != "", m.sessions.SortLabel(), m.sessions.LayoutLabel())
 	footerH := lipgloss.Height(footerStr)
 
 	statusStr := ""
@@ -410,21 +476,46 @@ func statusStyle(status string) lipgloss.Style {
 	}
 }
 
+func (m *Model) setFilterStatus() {
+	if m.sessions.Filter == "" {
+		m.sessions.Status = "Filter: all sessions"
+		return
+	}
+	m.sessions.Status = fmt.Sprintf("Filter: %q (%d/%d)", m.sessions.Filter, m.sessions.VisibleCount(), m.sessions.TotalCount())
+}
+
 // doRefresh refreshes sessions and updates header count.
 func (m *Model) doRefresh() {
 	m.sessions.Refresh()
-	m.header.SessionCount = len(m.sessions.List.Sessions)
+	m.header.SessionCount = m.sessions.TotalCount()
 }
 
 // rebuildPalette builds the command palette actions from current state.
 func (m *Model) rebuildPalette() {
 	actions := []views.Action{
 		{Name: "New Session", Desc: "Create a detached session", Key: "n", Do: func() {
-			name := generateSessionName(m.sessions.List.Sessions)
+			name := generateSessionName(m.sessions.AllSessions)
 			if err := m.client.NewSession(name, ""); err == nil {
 				m.sessions.Status = "✓ Created " + name
 				m.doRefresh()
 			}
+		}},
+		{Name: "Filter Sessions", Desc: "Narrow the visible session list", Key: "/", Do: func() {
+			m.filtering = true
+			m.filterBuffer = m.sessions.Filter
+			m.setFilterStatus()
+		}},
+		{Name: "Clear Filter", Desc: "Show every session again", Key: "esc", Do: func() {
+			m.sessions.ClearFilter()
+			m.sessions.Status = "Filter cleared"
+		}},
+		{Name: "Cycle Sort", Desc: "Switch ordering for the session list", Key: "s", Do: func() {
+			m.sessions.CycleSort()
+			m.sessions.Status = "Sort: " + m.sessions.SortLabel()
+		}},
+		{Name: "Cycle Layout", Desc: "Switch split, list, and preview modes", Key: "tab", Do: func() {
+			m.sessions.CycleLayout()
+			m.sessions.Status = "Layout: " + m.sessions.LayoutLabel()
 		}},
 		{Name: "Kill Session", Desc: "Destroy selected session", Key: "x", Do: func() {
 			if sel := m.sessions.List.Selected(); sel != nil {
@@ -471,7 +562,7 @@ func (m *Model) rebuildPalette() {
 	}
 
 	// Add session-specific actions
-	for _, s := range m.sessions.List.Sessions {
+	for _, s := range m.sessions.AllSessions {
 		s := s
 		actions = append(actions, views.Action{
 			Name: "Attach: " + s.Name,

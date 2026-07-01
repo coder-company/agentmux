@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.2.3 — 2026-07-01
+
+### TUI
+
+- Replaced the old accent treatment with a neutral charcoal palette and
+  green/cyan terminal accents.
+- Added live session filtering with `/`.
+- Added sort cycling with `s`: newest, name, windows, attached.
+- Added layout cycling with `tab`: split, list-only, preview-only.
+- Expanded preview metadata with attached state, window count, age, and cwd.
+- Moved the command palette to `:` and `Ctrl+P`.
+
 ## v0.2.0 — 2025-05-24
 
 ### Documentation
@@ -14,7 +26,7 @@
 
 - Header bar with brand, mode indicator, session count
 - Context-aware footer with keybinding hints
-- Refined dark theme with violet accents
+- Refined dark theme with high-contrast accents
 - Session list with relative timestamps and attached indicators
 - Preview pane with directory path, safe content truncation
 - Centered command palette overlay with fuzzy search
@@ -49,7 +61,7 @@ Initial release.
 ### Features
 
 - Full-screen TUI with session browser and pane preview
-- Command palette with fuzzy search (/)
+- Command palette with fuzzy search
 - Workspace launcher from TOML config (p)
 - Inline session rename (r) with validation
 - Kill confirmation prompt (y/N)

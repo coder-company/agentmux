@@ -7,17 +7,16 @@ pane preview, command palette, and workspace launcher all from one interface.
 It does not replace tmux. It makes tmux faster to navigate.
 
 ```
- ⣿ agentmux                                               3 sessions
-╭──────────── Sessions ─────────────╮╭──────────── Preview ──────────────────────╮
-│ ● main (3 win)  2h               ││ main  ~/code/agentmux                     │
-│   api (1 win)  5h                ││                                            │
-│   deploy (2 win)  1d             ││ $ go test ./...                             │
-│                                   ││ ok  agentmux/internal/config    0.01s      │
-│                                   ││ ok  agentmux/internal/store     0.06s      │
-│                                   ││ ok  agentmux/internal/adapters  0.00s      │
-│                                   ││ ok  agentmux/internal/tui/views 0.00s      │
-╰───────────────────────────────────╯╰────────────────────────────────────────────╯
- ↑↓/jk nav │ enter attach │ n new │ x kill │ r rename │ / search │ ? help │ q quit
+agentmux sessions                                      3 active
+────────────────────────────────────────────────────────────────────────────
+┌sessions                     3 sessions · sort newest · layout split┐ ┌preview                 3w · tail 40┐
+│› ● main                                      3w 2h                 │ │main  ~/code/agentmux                 │
+│    api                                       1w 5h                 │ │detached · 3w · created 2h ago        │
+│    deploy                                    2w 1d                 │ │windows  shell, editor, tests         │
+│                                                                  │ │                                      │
+│                                                                  │ │$ go test ./...                       │
+└──────────────────────────────────────────────────────────────────┘ └──────────────────────────────────────┘
+j/k move · enter attach · / filter · : commands · tab split · s sort newest · ? help
 ```
 
 ---
@@ -114,7 +113,12 @@ Two-panel layout:
 A **header** shows the app brand and total session count. A **footer** shows
 context-aware keybindings.
 
-### Command palette (`/`)
+The sessions view also supports direct list shaping:
+- Press `/` to filter sessions live by name, directory, or window count.
+- Press `s` to cycle sort order: newest, name, windows, attached.
+- Press `tab` to cycle layout: split, list-only, preview-only.
+
+### Command palette (`:` or `Ctrl+P`)
 
 A centered overlay with fuzzy search over:
 - Actions: new session, kill, rename, refresh, workspaces, help, quit
@@ -160,10 +164,14 @@ A categorized keybinding reference. Press `?` or `esc` to dismiss.
 
 | Key     | Action              |
 |---------|---------------------|
-| `/`     | Open command palette |
+| `/`     | Filter sessions live |
+| `esc`   | Clear active filter |
+| `s`     | Cycle session sort |
+| `tab`   | Cycle split/list/preview layout |
+| `:`     | Open command palette |
+| `Ctrl+P`| Open command palette |
 | `p`     | Open workspace launcher |
 | `?`     | Toggle help overlay |
-| `esc`   | Close any overlay   |
 | `q`     | Quit                |
 | `Ctrl+C`| Quit                |
 

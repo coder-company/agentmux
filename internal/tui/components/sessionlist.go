@@ -13,8 +13,11 @@ import (
 
 // SessionList renders a list of sessions with a cursor.
 type SessionList struct {
-	Sessions []core.Session
-	Cursor   int
+	Sessions   []core.Session
+	Cursor     int
+	EmptyTitle string
+	EmptyBody  string
+	EmptyHints []HelpBinding
 }
 
 // Selected returns the currently highlighted session, or nil.
@@ -64,7 +67,7 @@ func (sl *SessionList) Render(width, height int) string {
 	}
 
 	if len(sl.Sessions) == 0 {
-		return renderEmptySessions(width, height)
+		return sl.renderEmpty(width, height)
 	}
 
 	var lines []string
@@ -139,15 +142,32 @@ func (sl *SessionList) renderRow(i int, s core.Session, width int) string {
 	return line
 }
 
-func renderEmptySessions(width, height int) string {
+func (sl *SessionList) renderEmpty(width, height int) string {
+	title := sl.EmptyTitle
+	if title == "" {
+		title = "No tmux sessions"
+	}
+	body := sl.EmptyBody
+	if body == "" {
+		body = "Create a detached session or launch a configured workspace."
+	}
+	hints := sl.EmptyHints
+	if len(hints) == 0 {
+		hints = []HelpBinding{
+			{Key: "n", Desc: "new session"},
+			{Key: "p", Desc: "workspace launcher"},
+			{Key: ":", Desc: "command palette"},
+		}
+	}
+
 	rows := []string{
 		"",
-		styles.Bold.Render("  No tmux sessions"),
-		styles.Muted.Render("  Create a detached session or launch a configured workspace."),
+		styles.Bold.Render("  " + title),
+		styles.Muted.Render("  " + body),
 		"",
-		actionHint("n", "new session"),
-		actionHint("p", "workspace launcher"),
-		actionHint("/", "command palette"),
+	}
+	for _, hint := range hints {
+		rows = append(rows, actionHint(hint.Key, hint.Desc))
 	}
 
 	if height < len(rows) {

@@ -41,16 +41,23 @@ func RenderFooter(bindings []HelpBinding, width int) string {
 }
 
 // SessionsFooter returns the main view footer.
-func SessionsFooter(width int) string {
-	return RenderFooter([]HelpBinding{
+func SessionsFooter(width int, filterActive bool, sortLabel, layoutLabel string) string {
+	bindings := []HelpBinding{
 		{"j/k", "move"},
 		{"⏎", "attach"},
+		{"/", "filter"},
+		{":", "commands"},
+		{"tab", layoutLabel},
+		{"s", "sort " + sortLabel},
 		{"n", "new"},
 		{"x", "kill"},
 		{"r", "rename"},
-		{"/", "palette"},
 		{"p", "workspaces"},
 		{"?", "help"},
 		{"q", "quit"},
-	}, width)
+	}
+	if filterActive {
+		bindings = append([]HelpBinding{{"esc", "clear filter"}}, bindings...)
+	}
+	return RenderFooter(bindings, width)
 }

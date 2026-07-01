@@ -50,6 +50,12 @@ func (h *HelpOverlay) Render() string {
 		{"g g", "first"},
 		{"G", "last"},
 	})
+	content += section("Shape", [][2]string{
+		{"/", "filter sessions live"},
+		{"esc", "clear active filter"},
+		{"s", "cycle sort"},
+		{"tab", "cycle split/list/preview"},
+	})
 	content += section("Actions", [][2]string{
 		{"⏎ enter", "attach"},
 		{"n", "new session"},
@@ -58,7 +64,8 @@ func (h *HelpOverlay) Render() string {
 		{"R", "refresh"},
 	})
 	content += section("Views", [][2]string{
-		{"/", "command palette"},
+		{":", "command palette"},
+		{"ctrl+p", "command palette"},
 		{"p", "workspaces"},
 		{"?", "this help"},
 		{"esc", "close overlay"},
